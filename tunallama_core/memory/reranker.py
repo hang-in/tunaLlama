@@ -10,6 +10,7 @@ bi-encoder (BGE-M3, vector path) 는 query 와 doc 를 각자 임베딩하므로
 
 from __future__ import annotations
 
+import os
 import threading
 from typing import Sequence
 
@@ -21,14 +22,29 @@ _model = None
 _model_lock = threading.Lock()
 
 
+def _resolve_device() -> str | None:
+    """``TUNA_EMBEDDING_DEVICE`` 환경변수 공유 - 같은 device 정책."""
+    raw = os.environ.get("TUNA_EMBEDDING_DEVICE", "").strip().lower()
+    if raw in ("cpu", "mps", "cuda"):
+        return raw
+    return None
+
+
 def _get_reranker():
-    """lazy load - 첫 ``rerank()`` 호출 시 ~600MB 모델 다운로드/로드."""
+    """lazy load - 첫 ``rerank()`` 호출 시 ~600MB 모델 다운로드/로드.
+
+    ``TUNA_EMBEDDING_DEVICE`` 환경변수 (vector.py 와 공유) 로 device 제어.
+    """
     global _model
     with _model_lock:
         if _model is None:
             from sentence_transformers import CrossEncoder
 
-            _model = CrossEncoder(RERANKER_MODEL)
+            kwargs: dict = {}
+            device = _resolve_device()
+            if device is not None:
+                kwargs["device"] = device
+            _model = CrossEncoder(RERANKER_MODEL, **kwargs)
     return _model
 
 

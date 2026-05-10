@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import os
 import threading
 from dataclasses import dataclass
 
@@ -26,6 +27,17 @@ _model = None
 _model_lock = threading.Lock()
 
 
+def _resolve_device() -> str | None:
+    """``TUNA_EMBEDDING_DEVICE`` 환경변수 → device 문자열.
+
+    "" / "auto" → None (sentence-transformers 가 자동 선택). 잘못된 값은 None.
+    """
+    raw = os.environ.get("TUNA_EMBEDDING_DEVICE", "").strip().lower()
+    if raw in ("cpu", "mps", "cuda"):
+        return raw
+    return None
+
+
 @dataclass(frozen=True)
 class VectorHit:
     id: int
@@ -37,13 +49,21 @@ class VectorHit:
 
 
 def _get_model():
-    """lazy load — 첫 ``embed()`` 호출 때 BGE-M3 다운로드/로드 (~1GB)."""
+    """lazy load - 첫 ``embed()`` 호출 때 BGE-M3 다운로드/로드 (~1GB).
+
+    ``TUNA_EMBEDDING_DEVICE`` 환경변수로 device 강제 가능 (cpu/mps/cuda).
+    macOS 일상 사용에서 GPU 메모리 회복 원하면 ``cpu`` 권장.
+    """
     global _model
     with _model_lock:
         if _model is None:
             from sentence_transformers import SentenceTransformer
 
-            _model = SentenceTransformer(EMBEDDING_MODEL)
+            kwargs: dict = {}
+            device = _resolve_device()
+            if device is not None:
+                kwargs["device"] = device
+            _model = SentenceTransformer(EMBEDDING_MODEL, **kwargs)
     return _model
 
 

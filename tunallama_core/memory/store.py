@@ -37,11 +37,16 @@ class CallRecord:
 
 class MemoryStore:
     def __init__(
-        self, db_path: Path | str, *, korean_tokenizer: str = "kiwi"
+        self,
+        db_path: Path | str,
+        *,
+        korean_tokenizer: str = "kiwi",
+        enable_embeddings: bool = True,
     ) -> None:
         self._path = Path(db_path) if db_path != ":memory:" else None
         self._raw_path = str(db_path)
         self._tokenizer = korean_tokenizer
+        self._enable_embeddings = enable_embeddings
         self._conn: sqlite3.Connection | None = None
         # FastMCP 가 도구를 별도 스레드에서 호출할 수 있어 ``check_same_thread=False`` +
         # 단일 lock 으로 write 직렬화. SQLite WAL/journal 만으로는 sqlite3 의 thread
@@ -143,10 +148,13 @@ class MemoryStore:
         return rid
 
     def _compute_embedding_blob(self, inputs_json: str, output: str) -> bytes | None:
-        """임베딩 계산 시도. 실패 시 ``None`` — record 자체는 정상 저장.
+        """임베딩 계산 시도. ``enable_embeddings=False`` 거나 실패 시 ``None``.
 
+        ``enable_embeddings=False`` 면 BGE-M3 모델 자체 로드 안 함 (GPU 메모리 0).
         모델 import / 다운로드 / 추론 실패 어느 쪽이든 BM25 흐름은 영향 없게.
         """
+        if not self._enable_embeddings:
+            return None
         try:
             from .vector import embed
         except ImportError:
@@ -154,7 +162,7 @@ class MemoryStore:
         try:
             vec = embed(f"{inputs_json} {output}")
             return encode_blob(vec)
-        except Exception:  # noqa: BLE001 — 모델 호출 실패는 옵션 기능 정지로 흡수
+        except Exception:  # noqa: BLE001 - 모델 호출 실패는 옵션 기능 정지로 흡수
             return None
 
     def search_vectors(
@@ -170,7 +178,7 @@ class MemoryStore:
         product). 1 만 record 까지는 충분히 빠름.
         임베딩 모델 로드/호출이 실패하면 빈 리스트 반환 — BM25 fallback 은 호출자 몫.
         """
-        if limit <= 0:
+        if limit <= 0 or not self._enable_embeddings:
             return []
         try:
             from .vector import embed

@@ -115,13 +115,23 @@ def _build_llm(d: dict[str, Any]) -> LLMConfig:
     return cfg
 
 
+_EMBEDDING_DEVICES = ("auto", "cpu", "mps", "cuda")
+
+
 def _build_memory(d: dict[str, Any]) -> MemoryConfig:
     tok = _require_in("[memory].korean_tokenizer", d.get("korean_tokenizer", "kiwi"), _TOKENIZERS)
+    device = _require_in(
+        "[memory].embedding_device",
+        d.get("embedding_device", "auto"),
+        _EMBEDDING_DEVICES,
+    )
     return MemoryConfig(
         db_path=_expand(str(d.get("db_path", "~/.tunallama/memory.db"))),
         korean_tokenizer=tok,  # type: ignore[arg-type]
         enable_logging=bool(d.get("enable_logging", True)),
         enable_recall=bool(d.get("enable_recall", True)),
+        enable_embeddings=bool(d.get("enable_embeddings", True)),
+        embedding_device=device,
     )
 
 

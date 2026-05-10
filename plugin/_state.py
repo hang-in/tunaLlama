@@ -50,9 +50,16 @@ def _ensure() -> tuple[Config, LLMClient, MemoryStore | None]:
         _config = load_config()
         _client = make_client(_config.llm)
         if _config.memory.enable_logging:
+            # device 환경변수 — config 의 embedding_device 가 "auto" 가 아니면 우선 적용.
+            if _config.memory.embedding_device != "auto":
+                import os
+                os.environ.setdefault(
+                    "TUNA_EMBEDDING_DEVICE", _config.memory.embedding_device
+                )
             _store = MemoryStore(
                 _config.memory.db_path,
                 korean_tokenizer=_config.memory.korean_tokenizer,
+                enable_embeddings=_config.memory.enable_embeddings,
             ).open()
     assert _config is not None
     assert _client is not None

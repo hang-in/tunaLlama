@@ -57,6 +57,38 @@ def test_decode_blob_rejects_wrong_length():
     assert decode_blob(None) is None
 
 
+def test_disabled_embeddings_skip_model_load(monkeypatch, tmp_path):
+    """enable_embeddings=False 면 BGE-M3 모델 로드 자체 안 함 (GPU 메모리 0)."""
+
+    def fail(*a, **kw):
+        raise AssertionError("embed() must not be called when enable_embeddings=False")
+
+    monkeypatch.setattr("tunallama_core.memory.vector.embed", fail)
+    with MemoryStore(tmp_path / "off.db", enable_embeddings=False) as s:
+        rid = s.record_call(
+            tool_name="t", inputs={}, output="x", model="m", duration_ms=1
+        )
+        row = s.conn.execute(
+            "SELECT embedding FROM calls WHERE id=?", (rid,)
+        ).fetchone()
+        assert row["embedding"] is None
+        # search_vectors 도 빈 결과
+        assert s.search_vectors("x") == []
+
+
+def test_resolve_device_from_env(monkeypatch):
+    from tunallama_core.memory import vector as v
+
+    monkeypatch.delenv("TUNA_EMBEDDING_DEVICE", raising=False)
+    assert v._resolve_device() is None  # auto
+    monkeypatch.setenv("TUNA_EMBEDDING_DEVICE", "cpu")
+    assert v._resolve_device() == "cpu"
+    monkeypatch.setenv("TUNA_EMBEDDING_DEVICE", "MPS")
+    assert v._resolve_device() == "mps"
+    monkeypatch.setenv("TUNA_EMBEDDING_DEVICE", "weird")
+    assert v._resolve_device() is None  # 미지원 값 → fallback
+
+
 def test_record_call_stores_embedding(store):
     rid = store.record_call(
         tool_name="generate_code",

@@ -33,6 +33,11 @@ db_path = "~/.tunallama/memory.db"
 korean_tokenizer = "kiwi"
 enable_logging = true
 enable_recall = true
+# Phase 4: 벡터 임베딩 (BGE-M3) on/off. false 면 GPU 메모리 0, BM25 path 만 살아있음.
+enable_embeddings = true
+# auto | cpu | mps | cuda. macOS 일상 사용 시 "cpu" 권장 (다른 앱 GPU 사용 가능).
+# 환경변수 TUNA_EMBEDDING_DEVICE 가 우선.
+embedding_device = "auto"
 
 [routing]
 # always | on_request | never
