@@ -41,3 +41,13 @@ Before starting non-trivial work in a familiar codebase, consider calling
 `tuna_recall` with keywords from the current request. Past delegations on the
 same codebase often surface useful prior decisions. Korean queries work — the
 backend uses Kiwi morpheme indexing.
+
+# Project memory (state.md)
+
+At session start, the MCP resource `tunallama://memory/state` may auto-attach
+this project's conventions, active decisions, constraints, and observed
+anti-patterns. If that resource is not visible in your context, call
+`tuna_load_memory` once to load the same content as a tool response. The file
+lives at `~/.tunallama/projects/<hash>/state.md` and is preserved across
+sessions. Manual edits are kept; auto-extracted entries (Phase 6-2+) are
+tagged. Honor `Constraints` and avoid `Anti-patterns observed`.

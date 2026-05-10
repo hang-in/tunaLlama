@@ -202,6 +202,38 @@ def tuna_recall(query: str, limit: int = 5) -> str:
     return format_recall(res)
 
 
+# Phase 6-1 - state.md auto-load
+# Try 1 (preferred): MCP resource. Claude Code 가 attach 하면 자동 도달.
+# Try 2 (fallback): tuna_load_memory tool 명시 호출. SKILL.md 에서 안내.
+
+@mcp.resource("tunallama://memory/state")
+def _memory_state_resource() -> str:
+    """Project-scoped state.md (conventions, decisions, constraints, anti-patterns).
+
+    Auto-loaded by Claude Code when attached. Captures recurring decisions
+    and anti-patterns observed in this project. Manual edits in
+    ~/.tunallama/projects/<hash>/state.md are preserved.
+    """
+    from tunallama_core.memory.state import load_state, render
+    state = load_state(project_root())
+    return render(state)
+
+
+@mcp.tool()
+def tuna_load_memory() -> str:
+    """Load this project's tunaLlama memory (conventions, decisions, constraints,
+    anti-patterns). Call this once at session start if MCP resources are not
+    auto-attached. Path: ~/.tunallama/projects/<hash>/state.md."""
+    from tunallama_core.memory.state import load_state, render
+    state = load_state(project_root())
+    if not state.entries:
+        return (
+            "(아직 기록된 state 가 없습니다. delegation 후 자동 추출되거나 "
+            f"수동으로 {state.path} 편집 가능)"
+        )
+    return render(state)
+
+
 def main() -> None:
     mcp.run()
 
