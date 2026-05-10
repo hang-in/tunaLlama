@@ -48,7 +48,10 @@ target-version = "py311"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "--cov=tunallama_core --cov=plugin --cov-report=term-missing --cov-report=xml"
+addopts = "--strict-markers --cov=tunallama_core --cov=plugin --cov-report=term-missing --cov-report=xml"
+markers = [
+    "integration: requires running external services (Ollama at :11434, LM Studio at :1234). Auto-skipped when service is unavailable.",
+]
 
 [tool.coverage.run]
 branch = true
