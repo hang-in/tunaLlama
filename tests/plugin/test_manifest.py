@@ -15,6 +15,17 @@ def test_plugin_json_loads_with_required_fields():
     assert data["version"]
     assert data["description"]
     assert data["license"] == "MIT"
+    # author 는 object 형식 — Claude Code plugin schema 요구사항
+    assert isinstance(data["author"], dict)
+    assert data["author"]["name"]
+
+
+def test_marketplace_json_valid():
+    p = PLUGIN_ROOT.parent / ".claude-plugin" / "marketplace.json"
+    data = json.loads(p.read_text(encoding="utf-8"))
+    assert data["name"] == "tunallama-local"
+    assert data["plugins"][0]["name"] == "tunaLlama"
+    assert data["plugins"][0]["source"].startswith("./")
 
 
 def test_mcp_json_registers_server():
