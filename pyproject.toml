@@ -38,6 +38,9 @@ dev = [
 Homepage = "https://github.com/hang-in/tunaLlama"
 Issues = "https://github.com/hang-in/tunaLlama/issues"
 
+[project.scripts]
+tunallama = "tunallama_core.cli.main:run"
+
 [tool.hatch.build.targets.wheel]
 packages = ["tunallama_core"]
 

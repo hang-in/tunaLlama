@@ -23,6 +23,9 @@ env/
 # mise local overrides
 .mise.local.toml
 
+# external tools sometimes drop a .omc/ scratch directory
+.omc/
+
 # Local config / runtime data
 .tunallama/
 config.toml

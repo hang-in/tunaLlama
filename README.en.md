@@ -43,14 +43,32 @@ Switch with one line: `[llm] provider = "..."` in `config.toml`.
 
 > Unreleased. Will be stable when Phase 1 ships.
 
-### Users (just want to run it)
+### Users (just want to run it) — 5-minute walkthrough
+
 ```bash
+# 1. clone + install
 git clone https://github.com/hang-in/tunaLlama
 cd tunaLlama
-pip install -e .          # or `uv pip install -e .`
-mkdir -p ~/.tunallama && cp config.example.toml ~/.tunallama/config.toml
+pip install -e .                      # or `uv pip install -e .`
+
+# 2. interactive setup — provider, auto-discovered models, memory options
+tunallama init                        # default: ./.tunallama/config.toml
+# tunallama init --global             # to write ~/.tunallama/config.toml instead
+
+# 3. environment check — Python / config / provider / DB / Kiwi
+tunallama doctor
+
+# 4. (Ollama Cloud only) put the key in .env
+echo "OLLAMA_CLOUD_API_KEY=your_key" >> .env
+
+# 5. wire the plugin into Claude Code
 claude --plugin-dir ./plugin
 ```
+
+What `tunallama init` does for you:
+- Auto-discovers installed models when local Ollama / LM Studio is running — pick by number
+- Prompts for the env var name when the provider needs an API key
+- Creates ~/.tunallama or ./.tunallama as needed
 
 ### Contributors (dev setup)
 mise manages Python version + uv + `.venv` automatically.
