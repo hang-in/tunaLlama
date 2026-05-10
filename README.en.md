@@ -68,18 +68,33 @@ If you don't have mise yet, see the [mise installation guide](https://mise.jdx.d
 ## Layout
 
 ```
-tunallama_core/   # Backend (reusable, MCP-agnostic)
-  llm/            # Provider abstraction (ollama / lmstudio / factory)
-  memory/         # SQLite + Kiwi
-  ...
-plugin/           # Claude Code plugin (consumes backend)
+tunallama_core/                  # Backend (reusable, MCP-agnostic)
+  config/                        # TOML load + validation + frozen dataclasses
+  llm/                           # Provider abstraction (ollama / lmstudio / factory)
+  memory/                        # SQLite + FTS5 + Kiwi morpheme tokenization
+  delegation/                    # 10 tools + shared runner + prompts
+  routing.py                     # auto_recall policy
+  errors.py                      # domain exceptions
+plugin/                          # Claude Code plugin (consumes backend)
   .claude-plugin/plugin.json
   .mcp.json
-  mcp_server.py
-  skills/, agents/, hooks/
+  mcp_server.py                  # FastMCP server (11 tuna_* tools)
+  _state.py / _format.py
+  skills/delegate-to-ollama/SKILL.md
+  agents/tuna-developer.md
+tests/
+  core/                          # backend unit + integration tests
+  plugin/                        # plugin tool / manifest tests
 ```
 
 `tunallama_core` never imports anything from `plugin`. This boundary is what makes a future Codex frontend (Phase 4) cheap.
+
+## Status (Phase 1)
+
+- 11 MCP tools exposed: `tuna_generate_code`, `tuna_review_file`, `tuna_recall`, etc.
+- Every call recorded to SQLite, Korean queries supported via morpheme tokenizer.
+- 177 tests, 99% coverage.
+- Integration tests hit real Ollama Cloud / LM Studio (auto-skip when unavailable).
 
 ## Development status
 

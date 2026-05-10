@@ -68,18 +68,33 @@ mise 미설치 환경이면 [mise 공식 가이드](https://mise.jdx.dev/getting
 ## 디렉토리 구조
 
 ```
-tunallama_core/   # 백엔드 (재사용 가능, MCP 미인지)
-  llm/            # provider 추상화 (ollama / lmstudio / factory)
-  memory/         # SQLite + Kiwi
-  ...
-plugin/           # Claude Code 플러그인 (백엔드 소비)
+tunallama_core/                  # 백엔드 (재사용 가능, MCP 미인지)
+  config/                        # TOML 로드 + 검증 + frozen dataclass
+  llm/                           # provider 추상화 (ollama / lmstudio / factory)
+  memory/                        # SQLite + FTS5 + Kiwi 형태소
+  delegation/                    # 10 도구 + 공통 runner + 프롬프트
+  routing.py                     # auto_recall 정책
+  errors.py                      # 도메인 예외
+plugin/                          # Claude Code 플러그인 (백엔드 소비)
   .claude-plugin/plugin.json
   .mcp.json
-  mcp_server.py
-  skills/, agents/, hooks/
+  mcp_server.py                  # FastMCP 서버 (11 tuna_* 도구)
+  _state.py / _format.py
+  skills/delegate-to-ollama/SKILL.md
+  agents/tuna-developer.md
+tests/
+  core/                          # backend 단위 + 통합 테스트
+  plugin/                        # plugin 도구/매니페스트 테스트
 ```
 
 `tunallama_core` 는 `plugin` 을 절대 import 하지 않는다. Phase 4의 Codex 프론트엔드를 위한 경계.
+
+## 상태 (Phase 1)
+
+- 11 MCP 도구 노출: `tuna_generate_code`, `tuna_review_file`, `tuna_recall` 등.
+- 모든 호출 SQLite 기록, 한국어 형태소 검색 가능.
+- 177 테스트, 99% 커버리지.
+- 통합 테스트는 실 Ollama Cloud / LM Studio 에 붙음 (미가용 시 자동 skip).
 
 ## 개발 상태
 
