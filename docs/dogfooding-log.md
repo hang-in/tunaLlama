@@ -95,11 +95,97 @@ AVG                       0.25    0.67    0.67    0.69    0.25
 - 코드는 모두 활성화 유지 (graceful degrade) - 사용자가 큰 corpus 에서 옵션 사용.
 - precision-aware 측정 (P@1, MRR) + 더 큰 시드는 Phase 4 후보.
 
-## Round 11 — 2026-05-10 · Phase 3-2 (semantic_edges) · glm-4.7
+## Phase 4 결과 측정 - 2026-05-10
+
+### 102 record 시드 (12 task × 6 paraphrase + 30 noise) - leader-only baseline
+
+```
+path           P@1     P@5     R@5     MRR
+BM25          1.00    0.64    0.26    1.00
+vec           1.00    0.65    0.54    1.00
+hybrid        1.00    0.62    0.51    1.00
+rerank        1.00    0.70    0.58    1.00
+exp+B         1.00    0.67    0.42    1.00
+```
+
+- leader query (paraphrases[0]) 가 시드 record 와 정확히 동일 → **P@1/MRR
+  =1.00 일괄, 변별력 0**.
+- R@5 만 변별력. rerank > vec > hybrid > exp+B (mode=bm25) > BM25.
+- 36 record (Phase 3) 와 비교: vec 0.67 → 0.51, rerank 0.69 → 0.58 - corpus
+  커지면서 candidate 경쟁 증가. 정상 패턴.
+
+### Paraphrase variance (12 × 6 = 72 query / path, 약 1시간)
+
+```
+path           P@1     P@5     R@5     MRR    σP@1    σR@5
+BM25          1.00    0.73    0.29    1.00    0.00    0.14
+vec           1.00    0.61    0.51    1.00    0.00    0.21
+hybrid        1.00    0.60    0.50    1.00    0.00    0.20
+rerank        1.00    0.65    0.54    1.00    0.00    0.22
+exp+B         1.00    0.74    0.45    1.00    0.00    0.23
+```
+
+- σR@5 0.14-0.23 - query 표현마다 R@5 0.30-0.75 범위 흔들림.
+- P@5 와 R@5 우위 path 가 다름:
+  - P@5: exp+B (0.74) > BM25 (0.73) > rerank (0.65) > vec (0.61) > hybrid (0.60).
+  - R@5: rerank (0.54) > vec (0.51) > hybrid (0.50) > exp+B (0.45) > BM25 (0.29).
+- self-match 로 P@1 변별력 0 - 다음 측정은 query 를 시드에 없는 표현으로
+  분리해서 ranking 측정 필요.
+
+### Expanded path × 3 모델 비교 (12 group × leader, mode=hybrid, 약 20분)
+
+```
+model                        P@1     P@5     R@5     MRR
+glm-4.7                     1.00    0.75    0.62    1.00
+kimi-k2-thinking            1.00    0.75    0.62    1.00
+qwen3-coder:480b            1.00    0.68    0.57    1.00
+```
+
+- **glm-4.7 ≡ kimi-k2-thinking** - 소수점 둘째 자리까지 동일.
+- **qwen3-coder:480b 가 약함** (-0.07/-0.05). 코드 특화 모델이 자연어
+  paraphrase 생성에 불리. query expansion 에는 일반 reasoning 모델 권장.
+- mode=hybrid 의 expanded R@5 = 0.62 - **vec/rerank 도 능가**. hybrid 베이스
+  expansion 이 P@5 / R@5 둘 다 최강.
+
+### 의사결정
+
+| 케이스 | 권장 path |
+|---|---|
+| 키워드 일치 (Phase 2 시드) | BM25 (P=1.00) |
+| 가벼운 paraphrase (사용자 vocabulary 일정) | rerank/vec (cloud 호출 0) |
+| 강한 paraphrase + cloud 가용 | **expanded hybrid** (R@5 0.62, P@5 0.75) |
+| 자동 컨텍스트 주입 (`auto_recall=always`) | 비권장 - R@5 0.5 면 절반 noise |
+
+### 측정 자체의 한계
+
+- self-match 로 P@1/MRR 변별력 0. query 와 record 분리 필요.
+- 시드 102 record 는 실 사용 1k-10k corpus 와 다름.
+- 한 group 6 paraphrase 가 표면 토큰 거의 안 겹치는 hard mode - 일상 사용
+  분포보다 가혹함.
+
+---
+
+## Round 12 - 2026-05-10 · Phase 4-3 (extended seed + 4-metric) · glm-4.7
+
+- spec: `MemoryStore` + `compute_metrics` + 12 task × 6 paraphrase + 30 noise
+  명시. acceptance 에 "우리 실 API 사용" 못 박음.
+- 결과: 또 **standalone toy**.
+  - `from tunallama_core.store import Store` (실: `MemoryStore`).
+  - `from tunallama_core.clients import CloudClient` (모듈 자체 없음).
+  - `compute_metrics` 가 dict `{'P@1': ...}` 반환 가정 (실: `RetrievalMetrics`
+    dataclass).
+  - `store.add(text)` 가공 API. 실: `record_call(tool_name, inputs, output, ...)`.
+- 차용 가치: **시드 데이터 자체** (12 task × 6 paraphrase + 30 noise list).
+  논리/구조/import 는 폐기.
+- Architect 통합: `tests/integration/test_search_quality_extended.py` 직접
+  작성. 102 record store fixture + 5 path × 4 metric 측정 + paraphrase variance
+  측정 함수.
+
+## Round 11 - 2026-05-10 · Phase 3-2 (semantic_edges) · glm-4.7
 
 - spec: `LLMClient` + `MemoryStore.graph_edges` + `rebuild_edges` 변경 명시.
 - 결과: **OpenAI SDK 가정** (`client.chat.completions.create(...)`),
-  **MockStore 작성** — 우리 실 도구 무시. pytest 함수 6개 작성됨.
+  **MockStore 작성** - 우리 실 도구 무시. pytest 함수 6개 작성됨.
 - 정직 평가: 통합 가능 코드 X. 차용: prompt 패턴, `id_a < id_b`, max_pairs.
 - Architect 통합: 우리 `LLMClient.chat()`, `graph_edges` 테이블, `rebuild_edges`
   rule edges 만 삭제하도록 수정 (semantic_related 보존). 9 단위 테스트.
@@ -111,11 +197,11 @@ AVG                       0.25    0.67    0.67    0.69    0.25
 - 정직 평가: 측정 가치 0. 차용: 시드 36 record, precision/recall 패턴.
 - Architect 통합: 우리 `MemoryStore` + 실 BGE-M3 + 실 도구 호출.
 
-## dogfooding 11 회 누적 결론
+## dogfooding 12 회 누적 결론
 
 - **모델은 spec 의 형식 hint(pytest 함수, dataclass) 는 따르지만 우리
   코드베이스 통합(정확한 import, 실 인터페이스, schema migration) 은 거의
-  매번 무시**. round 7-11 일관 패턴.
+  매번 무시**. round 7-12 일관 패턴 - 12회째에도 동일.
 - **dogfooding 의 가치는 "drop-in 코드" 가 아니라 "알고리즘/디테일 차용"**:
   prompt 패턴, blob 검증, RRF 점수 합산, `normalize_embeddings`, SQL JOIN,
   id 정규화 — 모델이 잘 발견하고 architect 가 통합.

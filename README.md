@@ -148,6 +148,21 @@ def embed(text: str) -> np.ndarray:
 | reranked hybrid (cross-encoder bge-reranker-v2-m3) | 0.69 |
 | reranked BM25 | 0.25 |
 
+**Phase 4 - 확장 시드** (102 record = 12 task × 6 paraphrase + 30 noise; 12 query × 6 paraphrase = 72 query):
+
+| 경로 | P@5 | R@5 |
+|---|---:|---:|
+| BM25 | 0.73 | 0.29 |
+| vector | 0.61 | 0.51 |
+| hybrid | 0.60 | 0.50 |
+| reranked hybrid | 0.65 | 0.54 |
+| expanded BM25 (mode=bm25) | 0.74 | 0.45 |
+| **expanded hybrid (mode=hybrid, glm-4.7/kimi-k2-thinking)** | **0.75** | **0.62** |
+
+- query 표현마다 R@5 0.30-0.75 범위 흔들림 (σ 0.14-0.23) - paraphrase 가 표면 토큰 거의 안 겹치는 hard mode.
+- expansion 모델 비교 (12 query × leader): glm-4.7 = kimi-k2-thinking (R@5 0.62) > qwen3-coder:480b (0.57). **코드 특화 모델은 자연어 paraphrase 생성에 불리**.
+- self-match (query=record) 라 P@1/MRR 모든 path 1.00 - ranking 변별력 측정은 다음 phase 에서 query/record 분리.
+
 **해석**:
 - BM25 는 키워드 일치 시드에서 완벽, paraphrase 시드에서 R=0.25 (놓침 많음).
 - vector 는 paraphrase 에서 R **2.7배 우세** - 의미 매칭의 정량 가치.
@@ -157,26 +172,30 @@ def embed(text: str) -> np.ndarray:
   recall 을 **2배 향상** (0.25 → 0.50). vector 가 이미 강한 환경(0.67)
   에서는 expansion 한계 효용 X. 검색당 LLM 1 회 비용.
 - **Cross-encoder reranker** (`recall_reranked`, base="hybrid") 의 R@5 향상
-  은 미미 (0.67 → 0.69). 우리 시드(36 record)가 작고 paraphrase 가 명확해
-  bi-encoder 만으로도 candidate_pool 안에 정답이 다 들어가서 재정렬 여지 X.
-  큰 corpus / noisy 환경에서 재측정 + P@1/MRR 측정 필요.
+  은 36 record 시드에서 미미 (0.67 → 0.69) 였지만 **102 record 시드에서는
+  0.50 → 0.54** 로 +0.04, candidate 경쟁이 커진 환경에서 가치 회복.
+- **expanded hybrid (Phase 4)** 가 R@5 0.62 / P@5 0.75 로 **모든 path 중 1위**.
+  vector/rerank 도 능가. cloud LLM 호출 비용 있는 대신 강한 paraphrase 환경에
+  서 명확한 gain.
 
-**의사결정**: 일상 메모리 검색은 BM25(Kiwi) 만으로 충분. 다양한 표현으로 같은
-task 를 검색하는 시나리오에서는 `MemoryStore.search_vectors` 또는
-`recall_hybrid`. 두 path 모두 backend 에 살아있음.
+**의사결정**:
+- 키워드 일치 환경: BM25 (Kiwi) 만으로 충분 (P@3 = 1.00).
+- 가벼운 paraphrase: rerank 또는 vec (cloud 호출 0).
+- 강한 paraphrase + cloud 가용: **expanded hybrid** (mode="hybrid", glm-4.7
+  또는 kimi-k2-thinking).
 
 > **검색 품질 한계 - 솔직한 평가**
 >
-> 측정 수치는 RAG 표준 (R@5 0.8+ 권장) 미달. BM25 0.25 / vector 0.67 /
-> expanded BM25 0.50 은 "검색이 잘 된다" 보다는 "참고용 후보 surface" 수준.
+> R@5 만 보면 RAG 표준 (0.8+) 미달이지만 P@5 는 0.73-0.75 로 **"5 개 surface
+> 해서 사람이 고르는" UX 에는 충분**. 단 자동 컨텍스트 주입에는 부족.
 >
-> **`auto_recall = "always"` 비권장**: precision 보장이 약해 무관한 과거
-> record 가 dev_review prompt 에 섞일 위험. 컨텍스트 오염 가속. 기본값
-> `"on_request"` (사용자 명시 `tuna_recall` 호출만) 를 권장.
+> **`auto_recall = "always"` 비권장**: R@5 0.5 면 자동 prepend 5개 중 절반이
+> 무관 record. 컨텍스트 오염. 기본값 `"on_request"` (사용자 명시 `tuna_recall`
+> 호출 시만) 를 권장.
 >
 > always 모드를 꼭 써야 하면 `recall_limit` 을 2-3 으로 작게 두고 결과를
-> 사람이 한 번 보고 판단. Phase 4 의 cross-encoder reranker 가 들어오면
-> precision 향상 후 재고려.
+> 사람이 한 번 보고 판단. 측정 자체 한계로 P@1/MRR 변별력은 다음 phase 에서
+> query/record 분리한 시드로 회복 예정.
 
 자세한 내역: `tests/integration/test_search_quality{,_synonym}.py`,
 `docs/dogfooding-log.md` 의 검색 품질 섹션.

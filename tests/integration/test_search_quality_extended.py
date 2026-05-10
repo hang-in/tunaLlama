@@ -250,3 +250,109 @@ def test_full_metrics_per_path(extended_store, cloud_client, capsys):
     assert avg["rerank"].mrr >= avg["hybrid"].mrr - 0.05, (
         f"rerank MRR {avg['rerank'].mrr:.2f} vs hybrid {avg['hybrid'].mrr:.2f}"
     )
+
+
+def test_paraphrase_variance_per_path(extended_store, cloud_client, capsys):
+    """12 group × 6 paraphrase × 5 path = 360 query.
+
+    leader query 만 보면 self-match 로 P@1=1.0 변별력 없음. 6 paraphrase 다
+    도는 게 변형 query 에 대한 실제 검색 품질을 보여줌. expanded path 는
+    72회 cloud 호출.
+    """
+    import statistics
+
+    groups = _all_groups()
+    by_path: dict[str, list[RetrievalMetrics]] = {
+        "BM25": [], "vec": [], "hybrid": [], "rerank": [], "exp+B": [],
+    }
+
+    for idx, (_, phrases) in enumerate(groups):
+        relevant = _relevant_for_group(idx)
+        for query in phrases:
+            bm = [s.full_id for s in recall(extended_store, query, limit=20).snippets]
+            vec = [h.id for h in extended_store.search_vectors(query, limit=20)]
+            hy = [s.full_id for s in recall_hybrid(extended_store, query, limit=20).snippets]
+            rr = [
+                s.full_id
+                for s in recall_reranked(
+                    extended_store, query, limit=20, candidate_pool=20, base="hybrid"
+                ).snippets
+            ]
+            ex = [
+                s.full_id
+                for s in recall_expanded(
+                    extended_store, query, client=cloud_client, mode="bm25", limit=20
+                ).snippets
+            ]
+            by_path["BM25"].append(compute_metrics(bm, relevant))
+            by_path["vec"].append(compute_metrics(vec, relevant))
+            by_path["hybrid"].append(compute_metrics(hy, relevant))
+            by_path["rerank"].append(compute_metrics(rr, relevant))
+            by_path["exp+B"].append(compute_metrics(ex, relevant))
+
+    avg = {p: average_metrics(ms) for p, ms in by_path.items()}
+    r5_std = {
+        p: statistics.stdev([m.r_at_k for m in by_path[p]]) if len(by_path[p]) > 1 else 0.0
+        for p in by_path
+    }
+    p1_std = {
+        p: statistics.stdev([m.p1 for m in by_path[p]]) if len(by_path[p]) > 1 else 0.0
+        for p in by_path
+    }
+
+    with capsys.disabled():
+        print("\n\n=== Phase 4-3 paraphrase variance (12 × 6 = 72 queries / path) ===")
+        print(f"{'path':<10}{'P@1':>8}{'P@5':>8}{'R@5':>8}{'MRR':>8}{'σP@1':>8}{'σR@5':>8}")
+        print("-" * 58)
+        for p in ("BM25", "vec", "hybrid", "rerank", "exp+B"):
+            m = avg[p]
+            print(
+                f"{p:<10}{m.p1:>8.2f}{m.p_at_k:>8.2f}{m.r_at_k:>8.2f}{m.mrr:>8.2f}"
+                f"{p1_std[p]:>8.2f}{r5_std[p]:>8.2f}"
+            )
+        print()
+
+
+def test_expanded_model_comparison(extended_store, capsys):
+    """3 모델 비교 - query expansion 에 어느 모델이 더 좋은 paraphrase 를 만드는가.
+
+    expanded path 의 query rewriter 만 모델 swap. 다른 path 는 동일 (vec, BM25
+    등은 모델과 무관). mode='hybrid' (baseline 에서 BM25 베이스보다 hybrid
+    베이스가 R@5 높았던 것 반영).
+
+    12 group × leader query × 3 model = **36 cloud calls**.
+    """
+    if not os.environ.get("OLLAMA_CLOUD_API_KEY"):
+        pytest.skip("OLLAMA_CLOUD_API_KEY 미설정")
+
+    models = ["glm-4.7", "kimi-k2-thinking", "qwen3-coder:480b"]
+    by_model: dict[str, list[RetrievalMetrics]] = {m: [] for m in models}
+
+    for model_name in models:
+        cfg = OllamaCloudProviderConfig(
+            host="https://ollama.com",
+            api_key_env="OLLAMA_CLOUD_API_KEY",
+            model=model_name,
+        )
+        client = from_cloud(cfg, temperature=0.3, timeout=60)
+        for idx, (_, phrases) in enumerate(_all_groups()):
+            relevant = _relevant_for_group(idx)
+            query = phrases[0]
+            ex = [
+                s.full_id
+                for s in recall_expanded(
+                    extended_store, query, client=client, mode="hybrid", limit=20
+                ).snippets
+            ]
+            by_model[model_name].append(compute_metrics(ex, relevant))
+
+    avg = {m: average_metrics(by_model[m]) for m in models}
+
+    with capsys.disabled():
+        print("\n\n=== Phase 4-3 expanded model comparison (12 group × 1 leader / model) ===")
+        print(f"{'model':<24}{'P@1':>8}{'P@5':>8}{'R@5':>8}{'MRR':>8}")
+        print("-" * 56)
+        for m_name in models:
+            m = avg[m_name]
+            print(f"{m_name:<24}{m.p1:>8.2f}{m.p_at_k:>8.2f}{m.r_at_k:>8.2f}{m.mrr:>8.2f}")
+        print()
