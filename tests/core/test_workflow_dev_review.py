@@ -172,8 +172,10 @@ def test_summary_includes_iterations_and_final_code():
     s = r.summary()
     assert "2 회 반복" in s
     assert "수렴" in s
+    assert "PASS" in s  # 최종 verdict 헤더
     assert "code-v2" in s
     assert "needs work" in s
+    assert "verdict=" in s  # iteration 라인 포맷
 
 
 def test_dev_review_from_spec(tmp_path):

@@ -92,13 +92,19 @@ class DevReviewResult:
     converged: bool
 
     def summary(self) -> str:
+        last = self.iterations[-1] if self.iterations else None
+        final_verdict = (
+            "PASS" if (last and not last.issues_found) else "FAIL"
+        )
         head = (
-            f"=== dev_review ({len(self.iterations)} 회 반복, "
-            f"{'수렴' if self.converged else '한도 도달'}) ==="
+            f"=== dev_review · {final_verdict} · "
+            f"{len(self.iterations)} 회 반복 "
+            f"({'수렴' if self.converged else '한도 도달'}) ==="
         )
         lines = [head]
         for it in self.iterations:
-            lines.append(f"\n[#{it.iteration}] issues_found={it.issues_found}")
+            verdict = "PASS" if not it.issues_found else "FAIL"
+            lines.append(f"\n[#{it.iteration}] verdict={verdict}")
             lines.append("Review:")
             lines.append(it.review)
         lines.append("\n=== 최종 코드 ===")
