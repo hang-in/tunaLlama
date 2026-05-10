@@ -10,6 +10,7 @@
 - `pyproject.toml`, MIT `LICENSE`, `.gitignore`, `config.example.toml` 작성.
 - 한국어 메인 README, 영문 보조 README 분리(`README.md`, `README.en.md`).
 - mise 기반 개발 툴체인(`mise.toml`): Python 3.11 + uv + `.venv` 자동 활성화 + 공통 task(`install`, `test`, `lint`, `format`, `mcp`).
+- `.env` 자동 로드(mise) + `.env.example`. config.toml 의 `api_key_env` 가 가리키는 환경변수 보관용. 평문 키는 git ignore.
 
 ### 핸드오프 스펙 변경분 (`docs/handoff-tunallama-phase1.md` 대비)
 - LLM provider 범위를 **Ollama 로컬 단일** → **Ollama(로컬+클라우드) + LM Studio**로 확장.

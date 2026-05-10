@@ -25,6 +25,9 @@ env/
 # Local config / runtime data
 .tunallama/
 config.toml
+.env
+.env.*
+!.env.example
 *.db
 *.db-journal
 *.db-wal

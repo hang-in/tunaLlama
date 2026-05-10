@@ -8,6 +8,8 @@ uv = "latest"
 
 [env]
 _.python.venv = { path = ".venv", create = true }
+# .env 가 있으면 자동 로드 (없어도 무시)
+_.file = [".env"]
 
 # venv 안에서 패키지를 찾도록 보장
 PYTHONDONTWRITEBYTECODE = "1"
