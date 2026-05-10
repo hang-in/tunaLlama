@@ -3,7 +3,29 @@
 본 문서는 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/) 형식을 따른다.
 버전 번호는 [Semantic Versioning](https://semver.org/lang/ko/)을 따른다.
 
-## [Unreleased] — 0.1.0.dev0
+## [Unreleased]
+
+### 진행 중 (Phase 2)
+- 벡터 임베딩 + HNSW 시맨틱 검색
+- RRF (Reciprocal Rank Fusion) 로 BM25 + 벡터 병합
+- Rule-based 그래프 엣지 (`same_project`, `same_day`)
+- Phase 2 작업은 dogfooding 흐름으로 진행 — spec → `tuna_dev_review_from_spec`
+
+## [0.1.0] — 2026-05-10
+
+첫 정식 릴리즈. Phase 1 + Phase 1.5 완료.
+
+### Phase 1.5 (workflow + hook + dogfooding)
+- `tunallama_core/workflow/` — `dev_review_loop` (generate → review → fix → review),
+  `TaskSpec` markdown 파서 (Phase / Focus / Constraints / Acceptance), 약점 카탈로그
+  자동 prepend (`limitations.py`).
+- `plugin/hooks/pre_tool_use.py` — `Read` 큰 파일 시 advisory (off by default).
+- gemento 패턴 도입: `phase` enum, `focus` 필드, hard-rule constraints. `seCall` 의
+  Kiwi keep-tag 에 `NNB` 추가.
+- VERDICT 구조화 review prompt + JSON Schema 옵션 + stage-2 classifier (3-tier
+  fallback). dogfooding 6 라운드로 검증 — 자세한 사례는 `docs/dogfooding-log.md`.
+
+### Phase 1 Backend
 
 ### Phase 1 Backend
 - **errors**: `TunaLlamaError` 베이스 + `ConfigError` / `LLMError` / `MemoryStoreError` / `RecallError`.

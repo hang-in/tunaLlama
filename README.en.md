@@ -2,7 +2,7 @@
 
 Backend + Claude Code plugin that lets the main session (Architect) offload long-output coding work to a local LLM (Ollama / LM Studio) and keep decomposition + verification on the paid model.
 
-**Status**: Phase 1 + 1.5 done. alpha. unreleased.
+**Version**: v0.1.0 (Phase 1 + 1.5 shipped, Phase 2 in progress via dogfooding)
 **License**: MIT.
 **한국어**: [README.md](README.md) — fuller, treated as the canonical version.
 
