@@ -2,7 +2,7 @@
 
 Claude Code 의 메인 세션(아키텍트)이 무거운 코드 생성을 로컬 LLM(Ollama / LM Studio)에 위임하고, 분해와 검증만 유료 모델에 남겨두기 위한 백엔드 + 플러그인.
 
-**버전**: v0.1.0 출시 · v0.2.0 대기 (Phase 2 통합 완료, Phase 3 진행 중)
+**버전**: v0.3.0 출시 (Phase 1-5 측정 자산 완비, HyDE / normalized hybrid path 도입)
 **라이선스**: MIT.
 **English**: [README.en.md](README.en.md).
 
