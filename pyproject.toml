@@ -30,6 +30,7 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
     "ruff>=0.6.0",
 ]
 
@@ -47,3 +48,19 @@ target-version = "py311"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "--cov=tunallama_core --cov=plugin --cov-report=term-missing --cov-report=xml"
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "tests/*",
+    "plugin/hooks/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
+]

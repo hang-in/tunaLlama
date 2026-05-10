@@ -13,6 +13,7 @@ dist/
 .ruff_cache/
 .coverage
 htmlcov/
+coverage.xml
 
 # venv (mise auto-creates .venv)
 .venv/
