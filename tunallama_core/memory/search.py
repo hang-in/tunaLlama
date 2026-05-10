@@ -303,3 +303,83 @@ def recall_normalized(
         candidate_pool=limit * 4, base="hybrid",
         project_root=project_root,
     )
+
+
+def recall_hyde(
+    store: MemoryStore,
+    query: str,
+    *,
+    client,
+    base: str = "hybrid",
+    limit: int = 5,
+    project_root: str | None = None,
+) -> RecallResult:
+    """HyDE - LLM 가상 답변 생성 후 그 텍스트로 검색.
+
+    arXiv:2212.10496. record 가 "task description" 형태 (우리 시드)면,
+    LLM 의 hypothetical answer 가 record 와 더 가까운 vocabulary/structure
+    를 가져 검색이 더 잘 매칭. cloud LLM 1 회.
+    """
+    from .hyde import generate_hyde
+
+    if base not in ("hybrid", "bm25", "rerank"):
+        raise RecallError(f"base 는 'hybrid'|'bm25'|'rerank' 여야: {base!r}")
+
+    hyde_doc = generate_hyde(query, client=client)
+
+    if base == "hybrid":
+        return recall_hybrid(store, hyde_doc, limit=limit, project_root=project_root)
+    if base == "bm25":
+        return recall(store, hyde_doc, limit=limit, project_root=project_root)
+    return recall_reranked(
+        store, hyde_doc, limit=limit,
+        candidate_pool=limit * 4, base="hybrid",
+        project_root=project_root,
+    )
+
+
+def recall_mmr(
+    store: MemoryStore,
+    query: str,
+    *,
+    limit: int = 5,
+    candidate_pool: int = 20,
+    lambda_: float = 0.5,
+    project_root: str | None = None,
+) -> RecallResult:
+    """MMR (Maximal Marginal Relevance) - 관련성 + 다양성 균형.
+
+    1. ``recall_hybrid`` 로 후보 ``candidate_pool`` 추출.
+    2. MMR 로 ``limit`` 개 선택 (lambda_=0.5 default).
+    3. cloud 호출 0. 임베딩 비활성 환경에선 hybrid 결과 그대로 (MMR fallback).
+    """
+    from .mmr import mmr_select
+
+    if limit <= 0:
+        raise RecallError(f"limit 는 양수: {limit}")
+
+    base = recall_hybrid(
+        store, query, limit=candidate_pool, project_root=project_root,
+    )
+    if not base.snippets:
+        return base
+    if not 0.0 <= lambda_ <= 1.0:
+        raise RecallError(f"lambda_ 는 [0, 1]: {lambda_}")
+
+    q_emb = store.embed_query(query)
+    if q_emb is None:
+        # 임베딩 비활성 - MMR 적용 불가, hybrid 결과 limit 까지.
+        return RecallResult(
+            query=query,
+            total_matches=base.total_matches,
+            snippets=tuple(base.snippets[:limit]),
+        )
+
+    selected = mmr_select(
+        list(base.snippets), store=store,
+        query_embedding=q_emb, k=limit, lambda_=lambda_,
+    )
+    return RecallResult(
+        query=query, total_matches=base.total_matches,
+        snippets=tuple(selected),
+    )

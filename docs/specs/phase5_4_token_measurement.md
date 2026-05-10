@@ -1,6 +1,26 @@
-# Phase 5-4 - delegation 토큰 절약 정량 측정
+# Phase 5-4 - delegation 가치 정정 (측정 포기 + 메시지 정정)
 
-## 배경
+## 결정 (2026-05-11)
+
+**측정 포기**. Anthropic API 직접 사용은 사용자 환경에서 불가능 (`-p` mode
+transcript 파싱 가능하나 비용/복잡도 대비 정보 가치 작음). 외부 Codex 5.5
+의 사전 분기 ("미달이면 메시징 정정") 그대로 적용.
+
+**delegation 메시지 정정**: "토큰 절약 수단" → "컨텍스트 격리 + 무거운 작업의
+cloud 분리 수단".
+
+근거:
+- Phase 4-4 + 5-3 측정 모두 isolated task 에서 cloud LLM (glm-4.7) 의
+  코드 품질이 native 와 유사 (kw_hit 0%).
+- delegation 의 가치는 코드 품질이나 토큰이 아닌 **메인 conversation
+  보호** + **cloud 의 큰 모델 활용**.
+
+코드: `tunallama_core/measurement/token_count.py` 보존 - 향후 사용자가
+ANTHROPIC_API_KEY 확보 시 활용 가능. 현재 trigger X.
+
+## (이하 원래 spec 보존 - 향후 측정 가능 시 참조)
+
+## 배경 (deprecated)
 
 tunaLlama 의 핵심 가치 주장 중 하나: "무거운 코드 생성을 로컬/cloud LLM 에
 위임 → Claude 메인 conversation 토큰 절약". Phase 1-4 동안 이 주장은

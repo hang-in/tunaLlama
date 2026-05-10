@@ -165,6 +165,47 @@ qwen3-coder:480b            1.00    0.68    0.57    1.00
 
 ---
 
+## Phase 5-2D 결과 - MMR λ sweep (full 432 query, 4분 03초, cloud 0)
+
+```
+path               P@1     R@5     MRR    NDCG@5    sigmaP@1    sigmaR@5
+hybrid            0.51    0.34    0.65      0.38        0.50        0.23
+mmr_l1.0          0.65    0.42    0.75      0.47        0.48        0.24
+mmr_l0.7          0.63    0.36    0.73      0.42        0.48        0.22
+mmr_l0.5          0.32    0.24    0.50      0.26        0.47        0.19
+mmr_l0.3          0.07    0.08    0.23      0.08        0.25        0.11
+```
+
+- **외부 권고와 우리 use case 결과가 다름** (정직 보고).
+- λ=1.0 (다양성 0) 는 hybrid 보다 좋음 (P@1 +0.14) - 사실상 "hybrid pool
+  을 query embedding 으로 reorder" = vec 단독과 동등 (vec P@1 0.65 일치).
+- λ ≤ 0.5 부터 R@5 급락. LOPO relevant 6 paraphrase 가 의미 비슷 → MMR
+  다양성이 같은 task paraphrase 들을 떨어뜨림 → R@5 망가짐.
+- σR@5 는 줄지만 (λ=0.3 σR@5 0.11) 평균 R@5 0.08 이라 trade-off 안 됨.
+- **결론**: MMR 은 우리 짧은 record + relevant 가 paraphrase set 인 환경
+  에서 anti-pattern. 외부 권고는 긴 document + 무관 후보 다수 환경 가정.
+  abandon - HyDE 가 winner.
+
+## Phase 5-2C 결과 - HyDE 가 새 winner (24 group leader, 1시간 10분, cloud 48)
+
+```
+path                   P@1     R@5     MRR    NDCG@5    sigmaP@1    sigmaR@5
+hybrid_pool20         0.33    0.30    0.50      0.31        0.48        0.28
+rerank_pool50         0.54    0.38    0.71      0.43        0.51        0.24
+normalized            0.71    0.42    0.79      0.48        0.46        0.22
+hyde                  0.92    0.50    0.95      0.60        0.28        0.16
+```
+
+- **HyDE P@1 0.92** (normalized 0.71 → +0.21).
+- **HyDE σR@5 0.16** = 외부 목표 0.15 거의 도달 (normalized 0.22 → -0.06).
+- **HyDE σP@1 0.28** (normalized 0.46 → -0.18) 거대한 σ 감소.
+- LLM 1 회 (normalized 와 동급 비용).
+- arXiv 2212.10496 - 가상 답변 텍스트 → 검색. record 가 task description
+  형태 (우리 시드) 면 LLM 의 hypothetical answer 가 record vocabulary 와
+  매칭이 매우 강해짐.
+- **caveat**: 시드가 "task description" 형식 - 실 사용 시 record 가 다른
+  형식 (e.g. 도구 호출 결과 dump) 이면 효과 다를 수 있음. 정직 보고.
+
 ## Phase 5-2 결과 - σ reduction (variance 잡기)
 
 ### Path A - normalized (LLM query 정규화 + hybrid, 24 group sample, 39분 55초)

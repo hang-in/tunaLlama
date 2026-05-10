@@ -225,6 +225,32 @@ class MemoryStore:
         ).fetchone()
         return _row_to_record(row) if row else None
 
+    def get_embeddings_for_ids(self, ids):
+        """주어진 id list 의 embedding 벡터 dict 로 반환. 없는 id 는 누락.
+
+        MMR / 다양성 reranking 용. ``ids`` 빈 list 면 빈 dict.
+        """
+        if not ids:
+            return {}
+        placeholders = ",".join("?" * len(ids))
+        sql = f"SELECT id, embedding FROM calls WHERE id IN ({placeholders})"
+        out: dict[int, "np.ndarray"] = {}  # type: ignore[name-defined]
+        for row in self.conn.execute(sql, list(ids)).fetchall():
+            vec = decode_blob(row["embedding"])
+            if vec is not None:
+                out[row["id"]] = vec
+        return out
+
+    def embed_query(self, query: str):
+        """query 를 BGE-M3 로 임베딩. embedding 비활성/실패 시 None."""
+        if not self._enable_embeddings:
+            return None
+        try:
+            from .vector import embed
+            return embed(query)
+        except Exception:  # noqa: BLE001
+            return None
+
     def count(self) -> int:
         return self.conn.execute("SELECT COUNT(*) FROM calls").fetchone()[0]
 

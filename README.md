@@ -10,7 +10,20 @@ Claude Code 의 메인 세션(아키텍트)이 무거운 코드 생성을 로컬
 
 ## 1. 무엇이고 왜 만들었나
 
-Claude Code 로 코딩하다 보면 **출력이 긴 단계** - 코드 생성, 파일 리뷰, 리팩터 - 가 토큰을 가장 많이 먹는다. 그런데 이 단계는 보통 결정적이고 모델 품질의 차이가 작다. 반대로 분해(요구사항 → 작업 목록)와 검증(돌려받은 결과가 요구사항을 만족하는지)은 짧은 입출력이지만 모델 품질 차이가 크다.
+Claude Code 로 코딩하다 보면 **출력이 긴 단계** - 코드 생성, 파일 리뷰, 리팩터 - 가 메인 conversation 컨텍스트를 가장 많이 먹는다. 그런데 이 단계는 보통 결정적이고 모델 품질의 차이가 작다. 반대로 분해(요구사항 → 작업 목록)와 검증(돌려받은 결과가 요구사항을 만족하는지)은 짧은 입출력이지만 모델 품질 차이가 크다.
+
+> **delegation 의 가치 정정** (Phase 5-4 측정 결정, 2026-05-11)
+>
+> 초기 가설은 "토큰 절약" 이었지만, Phase 4-4 + 5-3 측정에서 isolated task
+> 의 코드 품질은 native (Claude 직접) 와 cloud LLM 위임이 유사 (kw_hit 0%).
+> delegation 의 진짜 가치는 토큰 절약이 아니라:
+> - **메인 conversation 컨텍스트 격리** (긴 코드/리뷰 텍스트가 메인 대화에
+>   안 들어옴)
+> - **무거운 작업의 cloud 분리** (대형 분석, large refactor, batch 작업)
+> - **로컬 모델 활용** (개인 정보 / 외부 송신 회피)
+>
+> 토큰 절약 정량 측정은 사용자 환경의 Anthropic API 미보유로 보류
+> (`docs/specs/phase5_4_token_measurement.md` 참조).
 
 tunaLlama 는 이 비대칭을 그대로 코드 흐름으로 굳혀 둔다. 도메인 패턴은 `OllamaClaude` (Jadael/OllamaClaude) 와 같지만, Python 으로 처음부터 다시 짰고 한국어 검색·문서 기반 워크플로우·약점 카탈로그가 추가됐다. 코드 복사는 없다.
 
@@ -148,16 +161,26 @@ def embed(text: str) -> np.ndarray:
 | reranked hybrid (cross-encoder bge-reranker-v2-m3) | 0.69 |
 | reranked BM25 | 0.25 |
 
-**Phase 5-2 - LLM query normalization (production RAG winner, 524 record, 24 group leader sample)**
+**Phase 5-2C - HyDE 가 새 production-RAG winner** (524 record, 24 group leader sample)
 
 | 경로 | P@1 | R@5 | MRR | NDCG@5 | σR@5 |
 |---|---:|---:|---:|---:|---:|
 | hybrid baseline | 0.33 | 0.30 | 0.50 | 0.31 | 0.28 |
-| **normalized hybrid** | **0.71** | **0.42** | **0.79** | **0.49** | **0.22** |
+| reranked (pool=50) | 0.54 | 0.38 | 0.71 | 0.43 | 0.24 |
+| normalized hybrid | 0.71 | 0.42 | 0.79 | 0.48 | 0.22 |
+| **HyDE hybrid** | **0.92** | **0.50** | **0.95** | **0.60** | **0.16** |
+
+- HyDE (arXiv:2212.10496): LLM 으로 query 를 가상 답변 텍스트로 변환 후 검색.
+- **P@1 0.92, MRR 0.95** - 거의 항상 첫 결과가 정답.
+- σR@5 0.16 - 외부 권고 목표 0.15 거의 도달.
+- LLM 1회 (normalized 와 동급 비용, expanded 보다 절반).
+- 함수: `recall_hyde(store, query, *, client, base="hybrid", limit=5)`.
+- **caveat**: 시드 record 가 "task description" 형식이라 hypothetical answer 와 매칭 매우 강함. 실 사용에서 record 가 도구 호출 dump 등 다른 형식이면 효과 편차 가능.
+
+**Phase 5-2A - normalized hybrid (이전 winner, 비교용)**
 
 - LLM 으로 query 를 standard form 으로 재작성 후 hybrid 검색.
-- P@1 +0.38, σR@5 -0.06 - **production RAG 에 가장 가까운 path**.
-- expanded hybrid (P@1 0.67, cloud LLM 2회) 보다 높은 P@1 + cloud 1회 = 가성비 1위.
+- P@1 0.71, σR@5 0.22 - HyDE 이전의 best path. 가성비 still good.
 - 함수: `recall_normalized(store, query, *, client, base="hybrid"|"bm25"|"rerank", limit=5)`.
 
 **Phase 5-1 - 524 record 시드 LOPO (102 → 524 corpus 확장 효과)**
@@ -234,7 +257,8 @@ corpus = 그 task 의 5 paraphrase + 다른 task 의 모든 paraphrase + 30 nois
 > | 키워드 일치 | BM25 (Kiwi) | 0.40 | 0.21 | cloud 0, 빠름 |
 > | 가벼운 paraphrase | reranked hybrid | 0.66 | 0.26 | cloud 0 |
 > | 강한 paraphrase | expanded hybrid | 0.67 | 0.23 | cloud 2회 |
-> | **production RAG** | **normalized hybrid** | **0.71** | **0.22** | **cloud 1회** |
+> | normalized hybrid | normalized hybrid | 0.71 | 0.22 | cloud 1회 |
+> | **production RAG** | **HyDE hybrid** | **0.92** | **0.16** | **cloud 1회** |
 >
 > - **normalized hybrid 가 P@1 / σ / 비용 모두 winner**. 524 record LOPO 측정.
 > - σR@5 0.22 - 외부 권고 목표 0.15 에 점진 접근. 시드 확장 + normalization 효과.
