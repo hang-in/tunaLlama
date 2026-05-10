@@ -1,111 +1,45 @@
-"""OllamaClient 테스트. ``ollama`` SDK 는 mock 으로 차단."""
+"""OllamaClient 통합 테스트 — Ollama Cloud (qwen3.6:27b-coding-mxfp8).
+
+mock 사용 안 함. 키/네트워크 미가용 시 자동 skip.
+"""
 
 from __future__ import annotations
 
-import sys
-import types
-from unittest.mock import MagicMock
-
 import pytest
 
-from tunallama_core.config.models import (
-    OllamaCloudProviderConfig,
-    OllamaProviderConfig,
-)
-from tunallama_core.errors import LLMError
+from tunallama_core.config.models import OllamaCloudProviderConfig
+from tunallama_core.errors import ConfigError, LLMError
+from tunallama_core.llm.ollama import from_cloud
 
 
-@pytest.fixture
-def fake_ollama(monkeypatch):
-    """``ollama`` 모듈을 메모리에 주입. Client / ResponseError 둘 다 mock."""
-    mod = types.ModuleType("ollama")
-
-    class FakeResponseError(Exception):
-        pass
-
-    fake_client_class = MagicMock(name="Client")
-    mod.Client = fake_client_class
-    mod.ResponseError = FakeResponseError
-    monkeypatch.setitem(sys.modules, "ollama", mod)
-    return mod
-
-
-def test_local_chat_returns_text(fake_ollama):
-    instance = MagicMock()
-    instance.chat.return_value = {"message": {"content": "hello"}}
-    fake_ollama.Client.return_value = instance
-
-    from tunallama_core.llm.ollama import from_local
-
-    cfg = OllamaProviderConfig(host="http://localhost:11434", model="m", num_ctx=2048)
-    c = from_local(cfg, temperature=0.4, timeout=30)
-    r = c.chat(system="sys", prompt="hi")
-
-    assert r.text == "hello"
-    assert r.model == "m"
-    assert r.duration_ms >= 0
-    fake_ollama.Client.assert_called_once_with(
-        host="http://localhost:11434", headers=None, timeout=30
+@pytest.mark.integration
+def test_cloud_chat_returns_text(ollama_cloud_cfg):
+    r = from_cloud(ollama_cloud_cfg, temperature=0.0, timeout=120).chat(
+        system="짧게 한 단어로 답하라.", prompt="hi"
     )
-    sent = instance.chat.call_args
-    assert sent.kwargs["model"] == "m"
-    assert sent.kwargs["options"] == {"temperature": 0.4, "num_ctx": 2048}
-    assert sent.kwargs["messages"][0]["role"] == "system"
-    assert sent.kwargs["messages"][1]["content"] == "hi"
+    assert r.text.strip()
+    assert r.model == ollama_cloud_cfg.model
+    assert r.duration_ms > 0
 
 
-def test_local_chat_handles_object_response(fake_ollama):
-    instance = MagicMock()
-    msg = types.SimpleNamespace(content="object-style")
-    instance.chat.return_value = types.SimpleNamespace(message=msg)
-    fake_ollama.Client.return_value = instance
-
-    from tunallama_core.llm.ollama import from_local
-
-    cfg = OllamaProviderConfig(host="h", model="m")
-    r = from_local(cfg, temperature=0.3, timeout=10).chat(system="s", prompt="p")
-    assert r.text == "object-style"
+@pytest.mark.integration
+def test_cloud_invalid_model_raises_llmerror(ollama_cloud_cfg):
+    bad_cfg = OllamaCloudProviderConfig(
+        host=ollama_cloud_cfg.host,
+        api_key_env=ollama_cloud_cfg.api_key_env,
+        model="this-model-definitely-does-not-exist-xx",
+    )
+    with pytest.raises(LLMError, match="Ollama"):
+        from_cloud(bad_cfg, temperature=0.0, timeout=30).chat(system="s", prompt="p")
 
 
-def test_local_chat_response_error_wrapped(fake_ollama):
-    instance = MagicMock()
-    instance.chat.side_effect = fake_ollama.ResponseError("model not found")
-    fake_ollama.Client.return_value = instance
-
-    from tunallama_core.llm.ollama import from_local
-
-    cfg = OllamaProviderConfig(host="h", model="m")
-    c = from_local(cfg, temperature=0.3, timeout=10)
-    with pytest.raises(LLMError, match="Ollama 호출 실패"):
-        c.chat(system="s", prompt="p")
-
-
-def test_cloud_passes_authorization_header(fake_ollama, monkeypatch):
-    monkeypatch.setenv("OLLAMA_API_KEY", "sk-test")
-    instance = MagicMock()
-    instance.chat.return_value = {"message": {"content": "ok"}}
-    fake_ollama.Client.return_value = instance
-
-    from tunallama_core.llm.ollama import from_cloud
-
+def test_resolve_api_key_missing_env_raises(monkeypatch):
+    """환경변수 부재 시 ConfigError. 외부 서비스 미가용이어도 통과."""
+    monkeypatch.delenv("__NEVER_SET_KEY__", raising=False)
     cfg = OllamaCloudProviderConfig(
-        host="https://ollama.com", api_key_env="OLLAMA_API_KEY", model="m"
-    )
-    from_cloud(cfg, temperature=0.3, timeout=15)
-    fake_ollama.Client.assert_called_once_with(
         host="https://ollama.com",
-        headers={"Authorization": "Bearer sk-test"},
-        timeout=15,
+        api_key_env="__NEVER_SET_KEY__",
+        model="m",
     )
-
-
-def test_extract_text_unknown_shape(fake_ollama):
-    instance = MagicMock()
-    instance.chat.return_value = "not-a-dict-not-an-object"
-    fake_ollama.Client.return_value = instance
-
-    from tunallama_core.llm.ollama import from_local
-
-    cfg = OllamaProviderConfig(host="h", model="m")
-    r = from_local(cfg, temperature=0.3, timeout=10).chat(system="s", prompt="p")
-    assert r.text == ""
+    with pytest.raises(ConfigError):
+        from_cloud(cfg, temperature=0.0, timeout=10)

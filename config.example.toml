@@ -15,9 +15,10 @@ num_ctx = 8192
 
 [llm.ollama_cloud]
 # Ollama Cloud (https://ollama.com). API 키는 환경변수로만 받음.
+# 모델은 cloud catalog 에 서빙 중인 것만 가능 — `Client.list()` 로 확인.
 host = "https://ollama.com"
-api_key_env = "OLLAMA_API_KEY"
-model = "qwen2.5-coder:32b"
+api_key_env = "OLLAMA_CLOUD_API_KEY"
+model = "devstral-small-2:24b"
 
 [llm.lmstudio]
 # LM Studio는 OpenAI 호환 엔드포인트 제공. 기본 1234 포트.

@@ -1,10 +1,10 @@
-"""make_client 분기 테스트. 외부 SDK 는 mock."""
+"""make_client 분기 검증.
+
+OllamaClient/LMStudioClient 의 ``__init__`` 은 네트워크를 사용하지 않으므로
+실 SDK 그대로 사용. mock 없음.
+"""
 
 from __future__ import annotations
-
-import sys
-import types
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -14,32 +14,23 @@ from tunallama_core.config.models import (
     OllamaCloudProviderConfig,
     OllamaProviderConfig,
 )
+from tunallama_core.errors import ConfigError
 from tunallama_core.llm.factory import make_client
 from tunallama_core.llm.lmstudio import LMStudioClient
 from tunallama_core.llm.ollama import OllamaClient
 
 
-@pytest.fixture
-def stub_ollama(monkeypatch):
-    mod = types.ModuleType("ollama")
-    mod.Client = MagicMock(name="Client")
-    mod.ResponseError = type("ResponseError", (Exception,), {})
-    monkeypatch.setitem(sys.modules, "ollama", mod)
-    return mod
-
-
-def test_factory_returns_ollama_for_local(stub_ollama):
+def test_factory_returns_ollama_for_local():
     cfg = LLMConfig(
         provider="ollama",
         temperature=0.3,
         timeout_seconds=10,
-        ollama=OllamaProviderConfig(host="h", model="m"),
+        ollama=OllamaProviderConfig(host="http://localhost:11434", model="m"),
     )
-    c = make_client(cfg)
-    assert isinstance(c, OllamaClient)
+    assert isinstance(make_client(cfg), OllamaClient)
 
 
-def test_factory_returns_ollama_for_cloud(stub_ollama, monkeypatch):
+def test_factory_returns_ollama_for_cloud(monkeypatch):
     monkeypatch.setenv("KEY", "v")
     cfg = LLMConfig(
         provider="ollama_cloud",
@@ -49,8 +40,7 @@ def test_factory_returns_ollama_for_cloud(stub_ollama, monkeypatch):
             host="https://ollama.com", api_key_env="KEY", model="m"
         ),
     )
-    c = make_client(cfg)
-    assert isinstance(c, OllamaClient)
+    assert isinstance(make_client(cfg), OllamaClient)
 
 
 def test_factory_returns_lmstudio():
@@ -58,15 +48,28 @@ def test_factory_returns_lmstudio():
         provider="lmstudio",
         temperature=0.3,
         timeout_seconds=10,
-        lmstudio=LMStudioProviderConfig(host="h", model="m"),
+        lmstudio=LMStudioProviderConfig(
+            host="http://localhost:1234/v1", model="m"
+        ),
     )
-    c = make_client(cfg)
-    assert isinstance(c, LMStudioClient)
+    assert isinstance(make_client(cfg), LMStudioClient)
 
 
 def test_factory_raises_when_active_section_missing():
-    from tunallama_core.errors import ConfigError
-
     cfg = LLMConfig(provider="ollama", temperature=0.3, timeout_seconds=10)
+    with pytest.raises(ConfigError):
+        make_client(cfg)
+
+
+def test_factory_raises_when_cloud_key_missing(monkeypatch):
+    monkeypatch.delenv("MISSING_KEY", raising=False)
+    cfg = LLMConfig(
+        provider="ollama_cloud",
+        temperature=0.3,
+        timeout_seconds=10,
+        ollama_cloud=OllamaCloudProviderConfig(
+            host="x", api_key_env="MISSING_KEY", model="m"
+        ),
+    )
     with pytest.raises(ConfigError):
         make_client(cfg)

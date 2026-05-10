@@ -41,12 +41,12 @@ def test_load_ollama_cloud(tmp_path):
         provider = "ollama_cloud"
         [llm.ollama_cloud]
         host = "https://ollama.com"
-        api_key_env = "OLLAMA_API_KEY"
+        api_key_env = "OLLAMA_CLOUD_API_KEY"
         model = "qwen2.5-coder:32b"
     """)
     cfg = load_config(_write(tmp_path, body))
     active = cfg.llm.active()
-    assert active.api_key_env == "OLLAMA_API_KEY"  # type: ignore[union-attr]
+    assert active.api_key_env == "OLLAMA_CLOUD_API_KEY"  # type: ignore[union-attr]
 
 
 def test_load_lmstudio(tmp_path):

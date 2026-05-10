@@ -6,19 +6,13 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+
+import httpx
+from ollama import Client, ResponseError
 
 from ..config.models import OllamaCloudProviderConfig, OllamaProviderConfig
 from ..errors import LLMError
 from .base import ChatResponse, LLMClient
-
-
-def _extract_text(resp: Any) -> str:
-    """ollama SDK 응답에서 본문 추출. 신규(객체) / 구버전(dict) 모두 수용."""
-    if isinstance(resp, dict):
-        return resp.get("message", {}).get("content", "")
-    msg = getattr(resp, "message", None)
-    return getattr(msg, "content", "") if msg is not None else ""
 
 
 class OllamaClient(LLMClient):
@@ -32,16 +26,11 @@ class OllamaClient(LLMClient):
         timeout: int,
         headers: dict[str, str] | None = None,
     ) -> None:
-        # 지연 import — `ollama` 미설치 환경에서도 다른 provider 테스트가 돌도록.
-        from ollama import Client  # type: ignore[import-not-found]
-
         self._client = Client(host=host, headers=headers, timeout=timeout)
         self._model = model
         self._options = {"temperature": temperature, "num_ctx": num_ctx}
 
     def chat(self, *, system: str, prompt: str) -> ChatResponse:
-        from ollama import ResponseError  # type: ignore[import-not-found]
-
         start = time.monotonic()
         try:
             resp = self._client.chat(
@@ -52,10 +41,10 @@ class OllamaClient(LLMClient):
                 ],
                 options=self._options,
             )
-        except ResponseError as e:
+        except (ResponseError, httpx.HTTPError) as e:
             raise LLMError(f"Ollama 호출 실패: {e}") from e
         return ChatResponse(
-            text=_extract_text(resp),
+            text=resp.message.content,
             model=self._model,
             duration_ms=int((time.monotonic() - start) * 1000),
         )
