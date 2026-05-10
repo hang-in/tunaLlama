@@ -4,6 +4,16 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+
+def _autoload_dotenv() -> None:
+    """cwd 의 ``.env`` 가 있으면 로드. doctor / init 양쪽 모두 일관된 환경."""
+    p = Path.cwd() / ".env"
+    if p.is_file():
+        load_dotenv(p, override=False)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -32,6 +42,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def run(argv: list[str] | None = None) -> int:
+    _autoload_dotenv()
     args = _build_parser().parse_args(argv)
     if args.cmd == "init":
         from .init_cmd import run_init

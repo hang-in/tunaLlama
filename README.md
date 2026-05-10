@@ -1,127 +1,286 @@
 # tunaLlama
 
-> 무거운 코드 생성은 로컬 LLM에 맡기고, Claude Code는 분해와 검증에만 집중하게 만드는 백엔드 + 플러그인.
+Claude Code 의 메인 세션(아키텍트)이 무거운 코드 생성을 로컬 LLM(Ollama / LM Studio)에 위임하고, 분해와 검증만 유료 모델에 남겨두기 위한 백엔드 + 플러그인.
 
-**상태**: Phase 1 구현 중 (alpha, 미공개)
-**라이선스**: MIT
-**English**: see [README.en.md](README.en.md)
+**상태**: Phase 1 + 1.5 완료. alpha. 미공개.
+**라이선스**: MIT.
+**English**: [README.en.md](README.en.md).
 
 ---
 
-## 무엇인가
+## 1. 무엇이고 왜 만들었나
 
-tunaLlama는 Claude Code 사용자가 토큰을 아낄 수 있도록 작업을 모델별로 쪼갠다.
+Claude Code 로 코딩하다 보면 **출력이 긴 단계** — 코드 생성, 파일 리뷰, 리팩터 — 가 토큰을 가장 많이 먹는다. 그런데 이 단계는 보통 결정적이고 모델 품질의 차이가 작다. 반대로 분해(요구사항 → 작업 목록)와 검증(돌려받은 결과가 요구사항을 만족하는지)은 짧은 입출력이지만 모델 품질 차이가 크다.
 
-| 역할 | 모델 | 이유 |
+tunaLlama 는 이 비대칭을 그대로 코드 흐름으로 굳혀 둔다. 도메인 패턴은 `OllamaClaude` (Jadael/OllamaClaude) 와 같지만, Python 으로 처음부터 다시 짰고 한국어 검색·문서 기반 워크플로우·약점 카탈로그가 추가됐다. 코드 복사는 없다.
+
+| 역할 | 모델 | 책임 |
 |---|---|---|
-| Architect | Claude Code (유료) | 요청을 분해. 입출력 짧음. |
-| Developer | 로컬 LLM (무료/저비용) | 코드 생성. 출력이 길어도 내 GPU에서 돌림. |
-| Reviewer | Claude Code (유료, 같은 세션) | 결과 검증. 입출력 짧음. |
+| Architect | Claude Code (유료) | 분해 / 사양 작성 / 검증 / 통합 |
+| Developer | 로컬 LLM (Ollama / Cloud / LM Studio) | 코드 생성 / 자체 리뷰 / 자체 수정 |
+| Reviewer | Claude Code (유료, 같은 세션) | 최종 판정 |
 
-토큰 헤비 단계(생성)만 로컬로 빠지고, 똑똑한 단계(분해 + 검증)는 짧은 컨텍스트로 유료 모델에 남는다. `OllamaClaude` (Jadael/OllamaClaude)와 동일한 아키텍처 패턴이지만 처음부터 Python으로 다시 짰다. 코드 복사 없음, 패턴 참고만.
+토큰 헤비 단계만 로컬로 빠지고, 짧은 분해·검증 단계는 그대로 Claude 에 남는다.
 
-추가 차별점:
-- **SQLite + FTS5 장기 메모리** — 모든 delegation 호출을 기록, 다음 세션에서 검색 가능.
-- **한국어 형태소 토크나이저** — Kiwi 기반 write-time tokenization으로 FTS5 한국어 리콜 정확도 확보.
-- **파일 인지형 도구** — `review_file`, `explain_file`, `analyze_files` 는 파일 경로만 받고 Claude 컨텍스트에 내용을 넣지 않는다.
+## 2. 동작 원리
 
-## 무엇이 아닌가
+전형적인 호출 흐름:
 
-- tunaFlow 의존 아님. 멀티 에이전트 라운드테이블 아님.
-- OllamaClaude 포크 아님.
-- 단일 모델 데모 아님. 연구 노트북 아님.
+1. 사용자가 한국어/영어로 task 를 말함.
+2. Claude(아키텍트)가 task 를 분해. 짧으면 `tuna_dev_review(requirements, language)` 한 번 호출, 길면 markdown spec 문서를 `docs/specs/<name>.md` 에 작성한 뒤 `tuna_dev_review_from_spec(path)` 호출.
+3. backend 가 generate → review → (이슈 있으면) fix → 다시 review 를 `max_iterations` 까지 자동 반복. 모든 호출은 SQLite 에 기록되고 한국어 형태소로 색인된다.
+4. backend 가 최종 코드 + iteration 로그를 반환.
+5. Claude 가 그 결과를 읽고 자체 검증. 의심스러우면 사용자에게 조각 단위로 보여주거나 `tuna_log_limitation()` 으로 약점을 카탈로그에 추가한다 (다음 호출의 prompt 앞에 자동 prepend).
 
-## 지원하는 로컬 LLM
+핵심은 backend 가 도구 호출을 **메모리 + recall 까지 한 호출에서 모두 처리** 한다는 점이다. Claude 가 file 내용·중간 코드·review 텍스트를 자기 컨텍스트로 끌어들이지 않아도 된다.
 
-- **Ollama (로컬)** — `qwen2.5:32b` 등 27B 이상 권장.
-- **Ollama Cloud** — API 키로 호스티드 모델 사용.
-- **LM Studio** — OpenAI 호환 엔드포인트(`/v1/chat/completions`).
-
-전환은 `config.toml` 의 `[llm] provider` 한 줄로.
-
-## 빠른 시작
-
-> 아직 미공개. Phase 1 완료 시 동작 보장.
-
-### 사용자 (실행만 할 사람) — 5분 가이드
-
-```bash
-# 1. 받기 + 설치
-git clone https://github.com/hang-in/tunaLlama
-cd tunaLlama
-pip install -e .                      # 또는 `uv pip install -e .`
-
-# 2. 대화식 설정 — provider 선택, 모델 자동 발견, 메모리 옵션
-tunallama init                        # 기본: ./.tunallama/config.toml
-# tunallama init --global             # ~/.tunallama/config.toml 에 저장하려면
-
-# 3. 환경 점검 — Python / config / provider / DB / Kiwi 검사
-tunallama doctor
-
-# 4. (Ollama Cloud 쓰는 경우) .env 에 키 추가
-echo "OLLAMA_CLOUD_API_KEY=발급받은_키" >> .env
-
-# 5. Claude Code 에 플러그인 연결
-claude --plugin-dir ./plugin
-```
-
-`tunallama init` 이 자동으로 해주는 것:
-- 로컬 Ollama 데몬 / LM Studio 가 켜져있으면 설치된 모델을 자동 발견 → 번호로 선택
-- 키가 필요한 provider 면 환경변수 안내
-- ~/.tunallama 또는 ./.tunallama 디렉토리 자동 생성
-
-### 기여자 (개발 환경)
-mise 가 Python 버전 + uv + `.venv` 를 자동 관리한다.
-
-```bash
-git clone https://github.com/hang-in/tunaLlama
-cd tunaLlama                  # 진입 시 .venv 자동 생성/활성화
-mise install                  # python 3.11 + uv 설치
-mise run install              # editable + dev 의존성
-mise run test                 # pytest
-```
-
-mise 미설치 환경이면 [mise 공식 가이드](https://mise.jdx.dev/getting-started.html) 참고.
-
-## 디렉토리 구조
+## 3. 아키텍처
 
 ```
-tunallama_core/                  # 백엔드 (재사용 가능, MCP 미인지)
+tunallama_core/                  # 백엔드 — 재사용 가능, MCP-agnostic
   config/                        # TOML 로드 + 검증 + frozen dataclass
-  llm/                           # provider 추상화 (ollama / lmstudio / factory)
+  llm/                           # Provider 추상화 (ollama / lmstudio / factory)
   memory/                        # SQLite + FTS5 + Kiwi 형태소
-  delegation/                    # 10 도구 + 공통 runner + 프롬프트
+  delegation/                    # 10 도구 + 공통 runner + 시스템 프롬프트
+  workflow/                      # dev_review_loop / spec / limitations
   routing.py                     # auto_recall 정책
   errors.py                      # 도메인 예외
-plugin/                          # Claude Code 플러그인 (백엔드 소비)
+  cli/                           # tunallama init / doctor
+
+plugin/                          # Claude Code 플러그인 — backend 소비
   .claude-plugin/plugin.json
   .mcp.json
-  mcp_server.py                  # FastMCP 서버 (11 tuna_* 도구)
-  _state.py / _format.py
+  mcp_server.py                  # FastMCP 서버, 14 tuna_* 도구 노출
+  _state.py                      # lazy 싱글톤 + .env 자동 로드
+  _format.py                     # recall 결과 직렬화
+  hooks/pre_tool_use.py          # 큰 파일 Read 시 권유 (off by default)
   skills/delegate-to-ollama/SKILL.md
   agents/tuna-developer.md
+
 tests/
-  core/                          # backend 단위 + 통합 테스트
-  plugin/                        # plugin 도구/매니페스트 테스트
+  core/                          # 단위 + 통합 (실 Ollama Cloud / LM Studio)
+  plugin/                        # MCP 도구 + 매니페스트 + state + hook
 ```
 
-`tunallama_core` 는 `plugin` 을 절대 import 하지 않는다. Phase 4의 Codex 프론트엔드를 위한 경계.
+**불변 규칙**: `tunallama_core` 는 `plugin` 을 절대 import 하지 않는다. Phase 4 에서 Codex 프론트엔드를 추가할 때 backend 를 그대로 가져다 쓸 수 있게 하려는 것이다.
 
-## 상태 (Phase 1)
+## 4. 메모리와 검색
 
-- 11 MCP 도구 노출: `tuna_generate_code`, `tuna_review_file`, `tuna_recall` 등.
-- 모든 호출 SQLite 기록, 한국어 형태소 검색 가능.
-- 177 테스트, 99% 커버리지.
-- 통합 테스트는 실 Ollama Cloud / LM Studio 에 붙음 (미가용 시 자동 skip).
+모든 delegation 호출은 SQLite 에 한 줄씩 적재된다.
 
-## 개발 상태
+```sql
+CREATE TABLE calls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    tool_name TEXT NOT NULL,
+    inputs_json TEXT NOT NULL,
+    output TEXT NOT NULL,
+    model TEXT NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    tokens_estimated INTEGER,
+    project_root TEXT,
+    session_id TEXT,
+    tags TEXT NOT NULL DEFAULT '[]'
+);
+CREATE VIRTUAL TABLE calls_fts USING fts5(
+    inputs_text, output_text,
+    tokenize='unicode61 remove_diacritics 2'
+);
+```
 
-`docs/handoff-tunallama-phase1.md` 가 단일 진실 원천. 핸드오프 대비 변경된 결정은 `CHANGELOG.md` 에 기록.
+FTS5 의 `unicode61` 토크나이저는 한국어를 음절/자모로만 자르기 때문에 한국어 검색 리콜이 나쁘다. 그래서 **write 시점에 Python 에서 Kiwi 로 형태소 분리** 한 결과를 원문과 함께 색인한다. "이메일검증" 처럼 띄어쓰기 없는 입력에 대해 "이메일" 로 검색해도 매칭된다.
 
-## 기여 / 라이선스
+```python
+# tunallama_core/memory/tokenize.py
+_KEEP_TAGS = {"NNG", "NNP", "NNB", "VV", "VA", "MAG", "MAJ", "SL"}
 
-MIT. 이슈/PR 환영. 한국어/영어 모두 가능.
+def kiwi_morphemes(text: str) -> str:
+    tokens = _get_kiwi().tokenize(text)
+    morph = " ".join(t.form for t in tokens if t.tag in _KEEP_TAGS)
+    return f"{morph} {text}".strip()
+```
 
----
+NNB(의존명사)는 `seCall` 프로젝트의 토크나이저 패턴을 참고해 추가했다. 트리거를 두지 않고 application 레이어에서 `calls` 와 `calls_fts` 에 명시적으로 INSERT 한다 — 한국어 사전 토큰화가 트리거 안에 들어가지 않기 때문에, 이중 INSERT 가 더 단순하고 디버깅 가능하다.
 
-이 문서는 한국 개발자 커뮤니티(damoang.net 등)와 글로벌 Claude Code 사용자를 동시에 겨냥한다. 영문판은 [README.en.md](README.en.md).
+리콜은 `tuna_recall(query, limit)` 으로 호출. 응답은 항상 요약 + 발췌 형식이라 컨텍스트를 폭발시키지 않는다.
+
+## 5. Provider 추상화
+
+```
+LLMClient (ABC)
+  ├─ OllamaClient          # ollama python SDK, 로컬/클라우드 모두 동일 클래스
+  └─ LMStudioClient        # OpenAI 호환 /chat/completions, httpx
+```
+
+`LLMConfig` 의 `provider` 필드 한 줄로 선택. `ollama_cloud` 만 API 키가 환경변수로 필요하고, 나머지는 host/port 만 본다.
+
+| Provider | host 기본값 | 키 |
+|---|---|---|
+| ollama | `http://localhost:11434` | 없음 |
+| ollama_cloud | `https://ollama.com` | `api_key_env` 가 가리키는 환경변수 |
+| lmstudio | `http://localhost:1234/v1` | 더미 |
+
+테스트는 mock 을 쓰지 않고 실 Ollama Cloud + 로컬 LM Studio 에 붙는다. 서비스 미가용 시 `@pytest.mark.integration` 로 자동 skip.
+
+## 6. Workflow — Architect ↔ Developer
+
+### dev_review 루프
+
+```python
+def dev_review_loop(
+    requirements: str, *, language=None, client, store=None,
+    max_iterations: int = 2, review_focus=None, limitations_path=None,
+) -> DevReviewResult:
+    full_req = with_limitations(requirements, path=limitations_path)
+    gen = generate_code(full_req, ...)
+    code = gen.text
+    for i in range(1, max_iterations + 1):
+        rev = review_code(code, focus=review_focus, ...)
+        if not _has_issues(rev.text):
+            return DevReviewResult(final_code=code, ..., converged=True)
+        if i == max_iterations:
+            break
+        code = fix_code(code, rev.text, ...).text
+    ...
+```
+
+heuristic: review 응답에 `LGTM`, `이상 없음` 등 종결 키워드가 있으면 수렴 처리. 그렇지 않으면 fix → 재 review.
+
+### Spec 문서 형식
+
+`docs/specs/<name>.md` 같은 곳에 markdown 으로 적는다. 헤더는 모두 옵션이지만 작은 모델일수록 명시할수록 안정적이다 — `gemento` 의 phase-driven decomposition + prioritized focus 패턴을 가져와 검증된 효과를 옮긴 것.
+
+```markdown
+# Task: build email validator
+
+## Phase
+IMPLEMENT          # DESIGN | IMPLEMENT | VERIFY
+
+## Focus
+정규식 검증 로직 먼저   # 한 줄 우선순위
+
+## Requirements
+- 정규식으로 1차 검증
+- 빈 문자열 거부
+
+## Constraints
+- 표준 라이브러리만
+- 외부 호출 없음
+
+## Acceptance
+- pytest 5 케이스 통과
+```
+
+`Constraints` 의 모든 항목은 hard rule 로 처리되며 위반 시 review 단계에서 잡혀 fix 루프로 들어간다.
+
+### 약점 카탈로그
+
+```bash
+# Architect 가 패턴을 인지하면
+tuna_log_limitation("한국어 docstring 작성 시 들여쓰기 어긋남")
+```
+
+→ `~/.tunallama/limitations.md` 에 기록되고, 이후 모든 `tuna_dev_review` 호출의 prompt 앞에 자동 prepend 되어 같은 실수를 줄인다. 자동 감지는 하지 않는다(아키텍트 판단).
+
+## 7. Hook (옵션)
+
+`plugin/hooks/pre_tool_use.py` 는 Claude 가 큰 파일을 `Read` 하려 할 때 advisory 메시지를 stderr 로 띄운다. block 하지 않는다. 활성화는 `~/.claude/settings.json` 또는 프로젝트 settings 의 `hooks.PreToolUse` 에 등록.
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {"matcher": "Read", "hooks": [
+        {"type": "command",
+         "command": "python /Users/me/tunaLlama/plugin/hooks/pre_tool_use.py"}
+      ]}
+    ]
+  }
+}
+```
+
+threshold 는 `TUNALLAMA_HOOK_THRESHOLD` 환경변수로 조정 (기본 5000 바이트).
+
+## 8. 설치
+
+### 사용자 — 5 분 가이드
+
+```bash
+git clone https://github.com/hang-in/tunaLlama
+cd tunaLlama
+
+pip install -e .                # 또는 `uv pip install -e .`
+
+tunallama init                  # 대화식 — provider/모델 자동 발견
+tunallama doctor                # Python / config / provider / DB / Kiwi 검사
+
+# Ollama Cloud 쓸 경우
+echo "OLLAMA_CLOUD_API_KEY=발급받은_키" >> .env
+
+# 영구 등록 — ~/.claude/settings.json 의 mcpServers 에:
+# {
+#   "mcpServers": {
+#     "tunallama": {
+#       "command": "/Users/me/tunaLlama/.venv/bin/python",
+#       "args": ["-m", "plugin.mcp_server"],
+#       "cwd": "/Users/me/tunaLlama"
+#     }
+#   }
+# }
+```
+
+`cwd` 가 프로젝트 루트라면 plugin 이 시작 시 `.env` 와 `./.tunallama/config.toml` 을 자동 발견한다.
+
+### 기여자
+
+```bash
+mise install                    # python 3.11 + uv
+mise trust                      # mise.toml 신뢰 (보안)
+mise run install                # editable + dev 의존성
+mise run test                   # pytest
+```
+
+## 9. 테스트와 커버리지
+
+```
+$ pytest
+... 249 passed in 8.65s
+... TOTAL coverage 94%
+```
+
+- 단위 테스트는 `LLMClient` 의 fake (`StaticClient`) 를 사용. 응답 캡처 + 결정적 결과.
+- 통합 테스트는 실 Ollama Cloud (`gemma4:31b`) + 로컬 LM Studio (`nvidia/nemotron-3-nano-4b`) 에 붙는다. 서비스 미가용 시 자동 skip.
+- mock 남발은 의도적으로 회피했다. 외부 SDK 의 동작 변경(스키마, 타입)이 가려져 실서비스 회귀를 놓치는 것을 막기 위해.
+
+## 10. 무엇이 아닌가
+
+- tunaFlow 의 멀티 에이전트 라운드테이블 아님 — 그건 다른 프로젝트의 일.
+- OllamaClaude 포크 아님 — 패턴 참고.
+- Codex CLI 통합 아님 — Phase 4 별도 핸드오프.
+- 단일 모델 데모 / 연구 노트북 아님.
+- 자동 weakness 감지 / 동적 tool 작성 아님 — 아키텍트 판단으로 `tuna_log_limitation` 호출 (Phase 2 후보).
+
+## 11. Phase 2 후보
+
+`docs/handoff-tunallama-phase1.md` §0 의 reality-wins 정책에 따라, Phase 1 에서 의도적으로 미뤄둔 것:
+
+- 벡터 임베딩(BGE-M3 등) + HNSW 시맨틱 검색
+- RRF(Reciprocal Rank Fusion) 로 BM25 + 벡터 병합
+- Rule-based 그래프 엣지 (`same_project`, `same_day`)
+- LLM-derived 시맨틱 엣지 (`fixes_bug`, `modifies_file`)
+- 자동 hook 라우팅 (Read → tuna_review_file 강제)
+- Codex App Server 클라이언트
+- 비대화식 `tunallama init --provider ... --model ...` 옵션
+- gemento 의 remediation_hint 구조화 응답 (LLM 응답 파싱 fragility 때문에 보류)
+
+## 12. 디렉토리에 있는 다른 문서
+
+- `docs/handoff-tunallama-phase1.md` — 구현 진실 원천. 변경분은 `CHANGELOG.md` 에 기록.
+- `docs/workflow.md` — Architect ↔ Subagent 워크플로우 한국어 가이드.
+- `CHANGELOG.md` — Phase 1 / 1.5 변경 이력 + 핸드오프 대비 spec 변경분.
+- `config.example.toml` — config 전체 필드 + 주석.
+- `.env.example` — 환경변수 예시.
+
+## 13. 라이선스 / 기여
+
+MIT. 이슈/PR 환영. 한국어/영어 모두 가능. 영문 README 는 [README.en.md](README.en.md) 를 함께 동기화 유지.
