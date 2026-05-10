@@ -3,7 +3,16 @@
 본 문서는 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/) 형식을 따른다.
 버전 번호는 [Semantic Versioning](https://semver.org/lang/ko/)을 따른다.
 
-## [Unreleased] — 0.2.0 (Phase 2 완료, 릴리즈 대기)
+## [Unreleased] — 0.2.0 (Phase 2 통합 완료, Phase 3 진행 중)
+
+### Phase 3 — semantic edges + synonym recall benchmark (작업 중)
+- `tests/integration/test_search_quality_synonym.py` — 동의어/paraphrase
+  시드로 BM25 가 약하고 vector/hybrid 가 우세한 시나리오 정량 측정.
+- `tunallama_core/memory/semantic_edges.py` — LLM-derived 페어 관계
+  분류 (`semantic_related` 등). rule-based edges 에 추가.
+- 작업 흐름: `docs/specs/phase3_*.md` → 차용 + Architect 통합.
+- 끝나면 v0.2.0 (Phase 2 + 3 묶어 한 번에 release).
+
 
 ### Phase 2 — semantic memory + graph
 - **벡터 임베딩** (`tunallama_core/memory/vector.py`): `BAAI/bge-m3` 1024-dim,
