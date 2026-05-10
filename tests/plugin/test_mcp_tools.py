@@ -49,7 +49,8 @@ def test_tuna_general_task(fake_state):
     assert "ctx" in p
 
 
-def test_tuna_review_file_reads_file(fake_state, tmp_path):
+def test_tuna_review_file_reads_file(fake_state, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)  # _project_root() = cwd 이므로 confinement 가 tmp_path
     f = tmp_path / "x.py"
     f.write_text("def login(): pass")
     out = mcp_server.tuna_review_file(str(f), "security")
@@ -60,14 +61,16 @@ def test_tuna_review_file_reads_file(fake_state, tmp_path):
     assert "def login" not in rec.inputs_json  # content 누출 X
 
 
-def test_tuna_explain_file(fake_state, tmp_path):
+def test_tuna_explain_file(fake_state, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     f = tmp_path / "y.py"
     f.write_text("Y = 1")
     mcp_server.tuna_explain_file(str(f), "expert")
     assert "Y = 1" in fake_state["client"].calls[-1]["prompt"]
 
 
-def test_tuna_analyze_files(fake_state, tmp_path):
+def test_tuna_analyze_files(fake_state, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     a = tmp_path / "a.py"
     b = tmp_path / "b.py"
     a.write_text("X=1")
@@ -127,6 +130,134 @@ def test_tuna_dev_review_from_spec_reads_file(fake_state, tmp_path):
     first_prompt = fake_state["client"].calls[0]["prompt"]
     assert "parse json" in first_prompt
     assert "handle nesting" in first_prompt
+
+
+def test_auto_recall_prepended_when_routing_always(fake_state, monkeypatch):
+    """routing.auto_recall='always' 면 도구 호출 prompt 에 recall context 자동 첨부."""
+    from tunallama_core import (
+        Config,
+        LLMConfig,
+        LoggingConfig,
+        MemoryConfig,
+        OllamaProviderConfig,
+        RoutingConfig,
+    )
+    from plugin import _state
+
+    cfg = Config(
+        llm=LLMConfig(
+            provider="ollama",
+            temperature=0.3,
+            timeout_seconds=10,
+            ollama=OllamaProviderConfig(host="x", model="m"),
+        ),
+        memory=MemoryConfig(db_path=fake_state["cfg"].memory.db_path),
+        routing=RoutingConfig(auto_recall="always"),
+        logging=LoggingConfig(),
+    )
+    monkeypatch.setattr(_state, "_config", cfg)
+
+    # 첫 호출 — 매칭 record 없으니 prefix 없어야
+    fake_state["client"].text = "first output"
+    mcp_server.tuna_generate_code("validate email addresses", "python")
+    assert "과거 관련 작업" not in fake_state["client"].calls[-1]["prompt"]
+
+    # 두 번째 호출 — 첫 호출이 store 에 있어 매칭 → prefix 첨부
+    fake_state["client"].text = "second output"
+    mcp_server.tuna_generate_code("validate email format", "python")
+    second_prompt = fake_state["client"].calls[-1]["prompt"]
+    assert "과거 관련 작업" in second_prompt
+    assert "first output" in second_prompt
+
+
+def test_auto_recall_silent_under_on_request(fake_state):
+    """on_request 모드 (fixture 기본값) 에서는 자동 prefix 안 함 — 명시 ``tuna_recall`` 만."""
+    fake_state["store"].record_call(
+        tool_name="generate_code",
+        inputs={"requirements": "validate email"},
+        output="prior",
+        model="m",
+        duration_ms=1,
+    )
+    mcp_server.tuna_generate_code("validate email format")
+    assert "과거 관련 작업" not in fake_state["client"].calls[-1]["prompt"]
+
+
+def test_auto_recall_skipped_when_routing_never(fake_state, monkeypatch):
+    """routing.auto_recall='never' 이면 prefix 없음."""
+    from tunallama_core import (
+        Config,
+        LLMConfig,
+        LoggingConfig,
+        MemoryConfig,
+        OllamaProviderConfig,
+        RoutingConfig,
+    )
+    from plugin import _state
+
+    cfg = Config(
+        llm=LLMConfig(
+            provider="ollama",
+            temperature=0.3,
+            timeout_seconds=10,
+            ollama=OllamaProviderConfig(host="x", model="m"),
+        ),
+        memory=MemoryConfig(db_path=fake_state["cfg"].memory.db_path),
+        routing=RoutingConfig(auto_recall="never"),
+        logging=LoggingConfig(),
+    )
+    monkeypatch.setattr(_state, "_config", cfg)
+
+    fake_state["store"].record_call(
+        tool_name="generate_code",
+        inputs={"requirements": "alpha"},
+        output="prior",
+        model="m",
+        duration_ms=1,
+    )
+    mcp_server.tuna_generate_code("alpha next")
+    assert "과거 관련 작업" not in fake_state["client"].calls[-1]["prompt"]
+
+
+def test_tuna_dev_review_runs_loop_with_routing(fake_state, monkeypatch):
+    """dev_review wrapper 가 routing 을 자동 전달해 always 모드에서 recall 첨부."""
+    from tunallama_core import (
+        Config,
+        LLMConfig,
+        LoggingConfig,
+        MemoryConfig,
+        OllamaProviderConfig,
+        RoutingConfig,
+    )
+    from plugin import _state
+
+    cfg = Config(
+        llm=LLMConfig(
+            provider="ollama",
+            temperature=0.3,
+            timeout_seconds=10,
+            ollama=OllamaProviderConfig(host="x", model="m"),
+        ),
+        memory=MemoryConfig(db_path=fake_state["cfg"].memory.db_path),
+        routing=RoutingConfig(auto_recall="always"),
+        logging=LoggingConfig(),
+    )
+    monkeypatch.setattr(_state, "_config", cfg)
+
+    from pathlib import Path
+
+    fake_state["store"].record_call(
+        tool_name="generate_code",
+        inputs={"requirements": "validate email"},
+        output="prior code",
+        model="m",
+        duration_ms=1,
+        project_root=str(Path.cwd()),  # _adapters.project_root() 와 일치시켜야 매칭
+    )
+    fake_state["client"].text = "ok 이상 없음"
+    mcp_server.tuna_dev_review("validate email format", "python", 1)
+    first = fake_state["client"].calls[0]["prompt"]
+    assert "과거 관련 작업" in first
 
 
 def test_tuna_log_limitation_creates_file(fake_state, tmp_path, monkeypatch):

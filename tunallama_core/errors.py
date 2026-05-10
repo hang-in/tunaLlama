@@ -25,3 +25,7 @@ class MemoryStoreError(TunaLlamaError):
 
 class RecallError(TunaLlamaError):
     """리콜 검색 단계에서 발생한 에러."""
+
+
+class FileScopeError(TunaLlamaError):
+    """파일 접근 범위/패턴 위반 — project_root 밖, 비밀 파일 패턴, 크기/형식 위반."""

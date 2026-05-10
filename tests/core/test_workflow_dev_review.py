@@ -119,6 +119,54 @@ def test_dev_review_from_spec_missing_file(tmp_path):
         dev_review_from_spec(tmp_path / "nope.md", client=c)
 
 
+def test_routing_auto_recall_prepends_to_all_steps(tmp_path):
+    """routing 이 주어지면 generate/review/(fix) 모두 같은 recall context 받음."""
+    from tunallama_core.config.models import RoutingConfig
+
+    c = ScriptedClient(responses=["code-v1", "needs work", "code-v2", "LGTM"])
+    with MemoryStore(tmp_path / "m.db") as store:
+        # 사전 호출 — 이후 검색에 잡힐 record 미리 적재
+        store.record_call(
+            tool_name="generate_code",
+            inputs={"requirements": "validate email"},
+            output="def is_valid_email(): ...",
+            model="m",
+            duration_ms=1,
+        )
+        dev_review_loop(
+            "validate email addresses",
+            client=c,
+            store=store,
+            max_iterations=2,
+            routing=RoutingConfig(auto_recall="always"),
+        )
+    # generate(0) + review#1(1) + fix#1(2) + review#2(3) — 모두 4개 prompt 에 recall 포함
+    for i, p in enumerate(c.seen):
+        assert "과거 관련 작업" in p, f"step {i} 에 recall context 없음"
+
+
+def test_routing_never_means_no_recall_prefix(tmp_path):
+    from tunallama_core.config.models import RoutingConfig
+
+    c = ScriptedClient(responses=["code", "LGTM"])
+    with MemoryStore(tmp_path / "m.db") as store:
+        store.record_call(
+            tool_name="generate_code",
+            inputs={"requirements": "anything"},
+            output="prior",
+            model="m",
+            duration_ms=1,
+        )
+        dev_review_loop(
+            "do thing",
+            client=c,
+            store=store,
+            routing=RoutingConfig(auto_recall="never"),
+        )
+    for p in c.seen:
+        assert "과거 관련 작업" not in p
+
+
 def test_iteration_result_records_review_text():
     c = ScriptedClient(responses=["code", "found a bug", "code-v2", "LGTM"])
     r = dev_review_loop("x", client=c, max_iterations=2)

@@ -33,8 +33,14 @@ def run_delegation(
     store: MemoryStore | None = None,
     project_root: str | None = None,
     session_id: str | None = None,
+    recall_prefix: str | None = None,
 ) -> DelegationResult:
-    resp = client.chat(system=system_prompt, prompt=user_prompt)
+    full_prompt = (
+        f"{recall_prefix}\n\n# Task\n{user_prompt}"
+        if recall_prefix
+        else user_prompt
+    )
+    resp = client.chat(system=system_prompt, prompt=full_prompt)
     call_id: int | None = None
     if store is not None:
         call_id = store.record_call(

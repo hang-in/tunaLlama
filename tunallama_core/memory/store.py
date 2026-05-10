@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -41,6 +42,10 @@ class MemoryStore:
         self._raw_path = str(db_path)
         self._tokenizer = korean_tokenizer
         self._conn: sqlite3.Connection | None = None
+        # FastMCP 가 도구를 별도 스레드에서 호출할 수 있어 ``check_same_thread=False`` +
+        # 단일 lock 으로 write 직렬화. SQLite WAL/journal 만으로는 sqlite3 의 thread
+        # 검사를 우회 못 함.
+        self._lock = threading.Lock()
 
     @property
     def conn(self) -> sqlite3.Connection:
@@ -55,8 +60,14 @@ class MemoryStore:
     def open(self) -> "MemoryStore":
         if self._path is not None:
             self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self._raw_path)
+        self._conn = sqlite3.connect(self._raw_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        # WAL — read 와 write 가 동시 진행 가능. 파일 DB 만 의미.
+        if self._path is not None:
+            try:
+                self._conn.execute("PRAGMA journal_mode=WAL")
+            except sqlite3.OperationalError:
+                pass  # :memory: 등 WAL 미지원이면 무시
         self._conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
         return self
 
@@ -88,29 +99,30 @@ class MemoryStore:
         inputs_json = json.dumps(inputs, ensure_ascii=False)
         tags_json = json.dumps(list(tags) if tags else [], ensure_ascii=False)
         c = self.conn
-        cur = c.execute(
-            """
-            INSERT INTO calls (
-                timestamp, tool_name, inputs_json, output, model,
-                duration_ms, tokens_estimated, project_root, session_id, tags
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                ts, tool_name, inputs_json, output, model,
-                duration_ms, tokens_estimated, project_root, session_id, tags_json,
-            ),
-        )
-        rid = cur.lastrowid
-        assert rid is not None  # AUTOINCREMENT INSERT 성공 시 보장
-        c.execute(
-            "INSERT INTO calls_fts (rowid, inputs_text, output_text) VALUES (?, ?, ?)",
-            (
-                rid,
-                tokenize_for_index(inputs_json, self._tokenizer),
-                tokenize_for_index(output, self._tokenizer),
-            ),
-        )
-        c.commit()
+        with self._lock:
+            cur = c.execute(
+                """
+                INSERT INTO calls (
+                    timestamp, tool_name, inputs_json, output, model,
+                    duration_ms, tokens_estimated, project_root, session_id, tags
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    ts, tool_name, inputs_json, output, model,
+                    duration_ms, tokens_estimated, project_root, session_id, tags_json,
+                ),
+            )
+            rid = cur.lastrowid
+            assert rid is not None  # AUTOINCREMENT INSERT 성공 시 보장
+            c.execute(
+                "INSERT INTO calls_fts (rowid, inputs_text, output_text) VALUES (?, ?, ?)",
+                (
+                    rid,
+                    tokenize_for_index(inputs_json, self._tokenizer),
+                    tokenize_for_index(output, self._tokenizer),
+                ),
+            )
+            c.commit()
         return rid
 
     def get(self, call_id: int) -> CallRecord | None:

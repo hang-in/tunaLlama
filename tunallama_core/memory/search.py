@@ -33,6 +33,24 @@ class RecallResult:
     total_matches: int
     snippets: tuple[RecallSnippet, ...]
 
+    def to_prompt_block(self) -> str:
+        """LLM prompt 위에 prepend 하기 좋은 짧은 markdown block.
+
+        recall 이 비어있으면 빈 문자열을 돌려 호출자가 분기 없이 ``""+prompt`` 가능.
+        """
+        if self.total_matches == 0 or not self.snippets:
+            return ""
+        lines = [
+            "# 과거 관련 작업 (참고용, 반드시 따를 필요는 없음):",
+        ]
+        for s in self.snippets:
+            lines.append(
+                f"- [{s.full_id}] {s.tool_name} · {s.timestamp}\n"
+                f"  in:  {s.inputs_summary}\n"
+                f"  out: {s.output_excerpt}"
+            )
+        return "\n".join(lines)
+
 
 def recall(
     store: MemoryStore,

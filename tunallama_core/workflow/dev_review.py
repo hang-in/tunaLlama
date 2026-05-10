@@ -10,9 +10,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from ..config.models import RoutingConfig
 from ..delegation import fix_code, generate_code, review_code
 from ..llm.base import LLMClient
 from ..memory.store import MemoryStore
+from ..routing import recall_for_delegation
 from .limitations import with_limitations
 from .spec import TaskSpec, parse_spec_file
 
@@ -62,6 +64,28 @@ def _has_issues(review: str) -> bool:
     return not any(t in low for t in _LGTM_TOKENS)
 
 
+def _build_recall_prefix(
+    routing: RoutingConfig | None,
+    store: MemoryStore | None,
+    *,
+    fallback_query: str,
+    project_root: str | None,
+) -> str | None:
+    if routing is None or store is None:
+        return None
+    rec = recall_for_delegation(
+        routing,
+        store,
+        explicit_query=None,
+        fallback_query=fallback_query,
+        project_root=project_root,
+    )
+    if rec is None:
+        return None
+    block = rec.to_prompt_block()
+    return block or None
+
+
 def dev_review_loop(
     requirements: str,
     *,
@@ -73,15 +97,20 @@ def dev_review_loop(
     max_iterations: int = 2,
     review_focus: str | None = None,
     limitations_path: Path | str | None = None,
+    routing: RoutingConfig | None = None,
 ) -> DevReviewResult:
     """generate → review → (fix → review) 반복.
 
     requirements 앞에 ``limitations.md`` 카탈로그가 자동 prepend 된다.
+    ``routing`` 이 주어지면 모든 단계에 auto_recall context 도 prepend.
     """
     if max_iterations <= 0:
         raise ValueError("max_iterations 는 양수여야 합니다.")
 
     full_req = with_limitations(requirements, path=limitations_path)
+    recall_prefix = _build_recall_prefix(
+        routing, store, fallback_query=requirements, project_root=project_root
+    )
 
     gen = generate_code(
         full_req,
@@ -90,6 +119,7 @@ def dev_review_loop(
         store=store,
         project_root=project_root,
         session_id=session_id,
+        recall_prefix=recall_prefix,
     )
     code = gen.text
 
@@ -102,6 +132,7 @@ def dev_review_loop(
             store=store,
             project_root=project_root,
             session_id=session_id,
+            recall_prefix=recall_prefix,
         )
         issues = _has_issues(rev.text)
         iterations.append(
@@ -120,6 +151,7 @@ def dev_review_loop(
             store=store,
             project_root=project_root,
             session_id=session_id,
+            recall_prefix=recall_prefix,
         )
         code = fix.text
 
@@ -138,6 +170,7 @@ def dev_review_from_spec(
     max_iterations: int = 2,
     review_focus: str | None = None,
     limitations_path: Path | str | None = None,
+    routing: RoutingConfig | None = None,
 ) -> DevReviewResult:
     """markdown spec 파일을 읽어 ``dev_review_loop`` 실행."""
     spec: TaskSpec = parse_spec_file(spec_path)
@@ -150,4 +183,5 @@ def dev_review_from_spec(
         max_iterations=max_iterations,
         review_focus=review_focus,
         limitations_path=limitations_path,
+        routing=routing,
     )

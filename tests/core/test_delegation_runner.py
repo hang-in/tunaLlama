@@ -63,6 +63,35 @@ def test_run_delegation_records_call_when_store_given(static_client, tmp_path):
         }
 
 
+def test_recall_prefix_prepended_to_user_prompt(static_client):
+    run_delegation(
+        client=static_client,
+        tool_name="t",
+        system_prompt="sys",
+        user_prompt="do thing",
+        inputs_for_log={},
+        recall_prefix="# 과거 작업\n- did similar thing yesterday",
+    )
+    sent = static_client.calls[-1]
+    assert "do thing" in sent["prompt"]
+    assert "과거 작업" in sent["prompt"]
+    assert "# Task" in sent["prompt"]
+    # 순서: prefix 먼저, Task 다음
+    assert sent["prompt"].index("과거 작업") < sent["prompt"].index("# Task")
+
+
+def test_no_recall_prefix_means_raw_user_prompt(static_client):
+    run_delegation(
+        client=static_client,
+        tool_name="t",
+        system_prompt="sys",
+        user_prompt="raw",
+        inputs_for_log={},
+    )
+    sent = static_client.calls[-1]
+    assert sent["prompt"] == "raw"
+
+
 def test_dataclass_is_frozen(static_client):
     r = run_delegation(
         client=static_client,

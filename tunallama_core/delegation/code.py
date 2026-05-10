@@ -1,4 +1,8 @@
-"""코드/텍스트 직접을 받는 7개 도구. 파일 IO 없음."""
+"""코드/텍스트 직접을 받는 7개 도구. 파일 IO 없음.
+
+모든 도구는 ``recall_prefix`` (옵션) 를 받는다 — 호출자(plugin layer 등) 가
+auto_recall 결과를 LLM prompt 위에 prepend 하고 싶을 때 사용.
+"""
 
 from __future__ import annotations
 
@@ -18,6 +22,7 @@ def _delegate(
     store: MemoryStore | None,
     project_root: str | None,
     session_id: str | None,
+    recall_prefix: str | None,
 ) -> DelegationResult:
     return run_delegation(
         client=client,
@@ -28,6 +33,7 @@ def _delegate(
         store=store,
         project_root=project_root,
         session_id=session_id,
+        recall_prefix=recall_prefix,
     )
 
 
@@ -39,6 +45,7 @@ def generate_code(
     store: MemoryStore | None = None,
     project_root: str | None = None,
     session_id: str | None = None,
+    recall_prefix: str | None = None,
 ) -> DelegationResult:
     user = f"Language: {language}\n\n{requirements}" if language else requirements
     return _delegate(
@@ -50,6 +57,7 @@ def generate_code(
         store=store,
         project_root=project_root,
         session_id=session_id,
+        recall_prefix=recall_prefix,
     )
 
 
@@ -61,6 +69,7 @@ def review_code(
     store: MemoryStore | None = None,
     project_root: str | None = None,
     session_id: str | None = None,
+    recall_prefix: str | None = None,
 ) -> DelegationResult:
     user = f"Focus: {focus}\n\n```\n{code}\n```" if focus else f"```\n{code}\n```"
     return _delegate(
@@ -72,6 +81,7 @@ def review_code(
         store=store,
         project_root=project_root,
         session_id=session_id,
+        recall_prefix=recall_prefix,
     )
 
 
@@ -83,6 +93,7 @@ def explain_code(
     store: MemoryStore | None = None,
     project_root: str | None = None,
     session_id: str | None = None,
+    recall_prefix: str | None = None,
 ) -> DelegationResult:
     user = (
         f"Audience: {audience}\n\n```\n{code}\n```"
@@ -98,6 +109,7 @@ def explain_code(
         store=store,
         project_root=project_root,
         session_id=session_id,
+        recall_prefix=recall_prefix,
     )
 
 
@@ -109,6 +121,7 @@ def refactor_code(
     store: MemoryStore | None = None,
     project_root: str | None = None,
     session_id: str | None = None,
+    recall_prefix: str | None = None,
 ) -> DelegationResult:
     user = f"Goal: {goal}\n\n```\n{code}\n```"
     return _delegate(
@@ -120,6 +133,7 @@ def refactor_code(
         store=store,
         project_root=project_root,
         session_id=session_id,
+        recall_prefix=recall_prefix,
     )
 
 
@@ -131,6 +145,7 @@ def fix_code(
     store: MemoryStore | None = None,
     project_root: str | None = None,
     session_id: str | None = None,
+    recall_prefix: str | None = None,
 ) -> DelegationResult:
     user = f"Error: {error}\n\n```\n{code}\n```"
     return _delegate(
@@ -142,6 +157,7 @@ def fix_code(
         store=store,
         project_root=project_root,
         session_id=session_id,
+        recall_prefix=recall_prefix,
     )
 
 
@@ -153,6 +169,7 @@ def write_tests(
     store: MemoryStore | None = None,
     project_root: str | None = None,
     session_id: str | None = None,
+    recall_prefix: str | None = None,
 ) -> DelegationResult:
     user = (
         f"Framework: {framework}\n\n```\n{code}\n```"
@@ -168,6 +185,7 @@ def write_tests(
         store=store,
         project_root=project_root,
         session_id=session_id,
+        recall_prefix=recall_prefix,
     )
 
 
@@ -179,6 +197,7 @@ def general_task(
     store: MemoryStore | None = None,
     project_root: str | None = None,
     session_id: str | None = None,
+    recall_prefix: str | None = None,
 ) -> DelegationResult:
     user = f"Task: {task}\n\nContext:\n{context}" if context else task
     return _delegate(
@@ -190,4 +209,5 @@ def general_task(
         store=store,
         project_root=project_root,
         session_id=session_id,
+        recall_prefix=recall_prefix,
     )

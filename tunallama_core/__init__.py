@@ -39,6 +39,7 @@ from .delegation import (
 )
 from .errors import (
     ConfigError,
+    FileScopeError,
     LLMError,
     MemoryStoreError,
     RecallError,
@@ -80,6 +81,7 @@ __all__ = [
     "load_config",
     # errors
     "ConfigError",
+    "FileScopeError",
     "LLMError",
     "MemoryStoreError",
     "RecallError",
