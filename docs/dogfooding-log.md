@@ -165,6 +165,91 @@ qwen3-coder:480b            1.00    0.68    0.57    1.00
 
 ---
 
+## Phase 4-3b LOPO 측정 결과 - 2026-05-10 (architect 직접, 1시간 16분)
+
+LOPO (leave-one-paraphrase-out) - 72 query (12 task × 6 회전).
+
+```
+path           P@1     R@5     MRR    NDCG@5    σP@1    σR@5   σNDCG
+BM25          0.38    0.16    0.44      0.21    0.49    0.18    0.22
+vec           0.65    0.46    0.74      0.51    0.48    0.29    0.31
+hybrid        0.51    0.45    0.67      0.47    0.50    0.27    0.29
+rerank        0.62    0.51    0.74      0.54    0.49    0.30    0.31
+exp+H         0.74    0.52    0.81      0.57    0.44    0.29    0.30
+```
+
+- **P@1 변별력 회복 ✓**. 이전 self-match (모든 path 1.00) → 0.38-0.74 로 분리.
+- **expanded hybrid 가 모든 metric 1위** - P@1 0.74, MRR 0.81, NDCG@5 0.57, R@5 0.52.
+- MRR 0.81 = 평균 첫 relevant rank 1.23. exp+H 검색은 **거의 항상 첫 결과에 정답**.
+- BM25 R@5 0.16 - LOPO 환경 (key paraphrase 누락) 에서 키워드 매칭 한계 명확.
+- σP@1 0.44-0.50 - binary metric 최대 σ. query 마다 hit/miss 강하게 분리.
+
+### Phase 4-3 paraphrase variance 와 비교
+
+| 시드 / measurement | BM25 P@1 | vec P@1 | exp P@1 | exp R@5 |
+|---|---:|---:|---:|---:|
+| 102 record + paraphrases[0] | 1.00 | 1.00 | 1.00 | 0.45 (mode=bm25) |
+| 102 record + 6 paraphrase | 1.00 | 1.00 | 1.00 | 0.62 (hybrid) |
+| **LOPO (corpus 5 + 빠진 1)** | **0.38** | **0.65** | **0.74** | **0.52** |
+
+**LOPO 가 진짜 ranking 측정**. 이전 측정은 self-match 라 P@1/MRR 죽은 메트릭.
+
+## Phase 4-4 측정 결과 - 2026-05-10 (54분, 30 generate + 30 judge)
+
+```
+mode          corr   focus   minim   smell   total
+never         2.00    2.00    2.00    2.00    8.00
+always        2.00    2.00    2.00    2.00    8.00
+```
+
+**모든 axis / probe / mode 가 만점 일괄, 변별력 0**. artifacts 분석:
+- never 와 always 의 코드 line/char/imports 모두 정확히 동일 (avg 8 lines, 197
+  chars, 0 imports).
+- always 가 recall prefix prepend 됐는데도 결과 코드 100% 동일 → 모델이 toy
+  probe 환경에서 recall prefix 무시.
+- judge comment 빈 문자열 - kimi-k2-thinking 이 schema comment 채우지 않음
+  (cloud schema 강제 한계 재확인).
+
+**해석** (외부 Codex 5.5 사전 경고 정량 검증):
+- "5 probe (gcd/vowels/mean/fizzbuzz/deep_merge) 가 too narrow, 다 isolated
+  function. recall 효과는 cross-task 에서 진짜 드러남" - 그대로 실현.
+- 측정 자체로는 "**always 가 toy 환경 코드 품질 명백히 안 망가뜨림**" 약한
+  positive signal.
+- 결정적 증거 X. cross-task probe + AST smell + paired design 으로 다음
+  iteration 필요 (memory `project_phase4_followups.md`).
+
+## Round 14 - 2026-05-10 · Phase 4-3b (LOPO) · glm-4.7 · positive grounding 첫 시험
+
+- spec: 외부 Opus 4.7 검토 따라 **Required Imports / Required Call Signatures
+  / Forbidden Patterns** 명시 + File path 지정. 외부 검토 가설: "negative
+  limitations 보다 positive 가 강함, 모델이 '하지 마라' 보다 '이걸 써라' 에
+  훨씬 잘 반응".
+- 결과: ✗ **가설 깨짐**. positive grounding 도 limitations.md 와 동일 패턴.
+  - `from tunallama_core.memory.metrics import compute_metrics, RetrievalMetrics` 무시.
+  - 새 `MetricResult` dataclass + `calculate_metrics(List[List[int]])` 시그너처.
+  - `MemoryStore` 호출 0 회. 시드 0 record.
+  - hardcoded test_data dict 로 ranks 배열 만든 toy.
+  - "Forbidden np.random / MockSearchEngine" 명시했지만 hardcoded mock 으로 우회.
+- **대조 검증**: round 7-14 = 8 번 일관 standalone-toy. spec 형식 (negative /
+  positive / hybrid) 모두 효과 X.
+- **결론**: Codex 5.5 의 진단이 정답. integration coder 위임 자체가 비경제적.
+  dogfooding 은 **bounded output only** (알고리즘 초안 / seed 데이터 / prompt
+  variants / 실패 샘플) 로 재포지셔닝 확정.
+- Architect 통합: LOPO 측정은 architect 직접 작성 (다음 단계).
+
+## Round 13 - 2026-05-10 · Phase 4-4 (context pollution A/B) · glm-4.7
+
+- spec: 5 probe × 2 mode × 3 run = 30 회 **실 dev_review** + judge LLM 평가
+  명시. acceptance "30 dev_review 호출 완료 + 모든 코드 저장".
+- 결과: **np.random 으로 점수 시뮬**. dev_review 호출 0 회, judge 호출 0 회.
+  - `BIAS_ALWAYS = -0.35` 매직 넘버로 always 모드만 -0.35 깎이도록 인위적 시뮬.
+  - `np.clip(np.random.uniform(0.6, 0.9) + bias, 0, 1)` - 결과 미리 정해진 fake.
+  - **README.md 직접 덮어쓰기** - 위험.
+  - `tunallama_core` 어떤 모듈도 사용 X.
+- 차용 가치: 0. 시뮬 toy 라 측정 가치 없음.
+- Architect 통합: 직접 작성 - `tests/integration/test_context_pollution.py`
+  (30 회 실 dev_review + judge LLM, kimi-k2-thinking).
+
 ## Round 12 - 2026-05-10 · Phase 4-3 (extended seed + 4-metric) · glm-4.7
 
 - spec: `MemoryStore` + `compute_metrics` + 12 task × 6 paraphrase + 30 noise

@@ -161,7 +161,24 @@ def embed(text: str) -> np.ndarray:
 
 - query 표현마다 R@5 0.30-0.75 범위 흔들림 (σ 0.14-0.23) - paraphrase 가 표면 토큰 거의 안 겹치는 hard mode.
 - expansion 모델 비교 (12 query × leader): glm-4.7 = kimi-k2-thinking (R@5 0.62) > qwen3-coder:480b (0.57). **코드 특화 모델은 자연어 paraphrase 생성에 불리**.
-- self-match (query=record) 라 P@1/MRR 모든 path 1.00 - ranking 변별력 측정은 다음 phase 에서 query/record 분리.
+- self-match (query=record) 라 P@1/MRR 모든 path 1.00 → LOPO (아래) 로 변별력 회복.
+
+**Phase 4-3b - LOPO (leave-one-paraphrase-out, 72 query)**
+
+corpus = 그 task 의 5 paraphrase + 다른 task 의 모든 paraphrase + 30 noise. query = 빠진 1 paraphrase. 6 paraphrase 회전.
+
+| 경로 | P@1 | R@5 | MRR | NDCG@5 |
+|---|---:|---:|---:|---:|
+| BM25 | 0.38 | 0.16 | 0.44 | 0.21 |
+| vector | 0.65 | 0.46 | 0.74 | 0.51 |
+| hybrid | 0.51 | 0.45 | 0.67 | 0.47 |
+| reranked hybrid | 0.62 | 0.51 | 0.74 | 0.54 |
+| **expanded hybrid** | **0.74** | **0.52** | **0.81** | **0.57** |
+
+- **P@1 변별력 회복**: 이전 self-match 시드 (모든 path 1.00) 에선 죽은 메트릭. LOPO 에서는 0.38-0.74 로 path 우열 명확.
+- **expanded hybrid 가 모든 metric 1위**. MRR 0.81 = 평균 첫 relevant rank 1.23 - **거의 항상 첫 결과가 정답**.
+- BM25 R@5 0.16 - LOPO 환경 (key paraphrase 누락) 에서 키워드 매칭 한계 명확.
+- σP@1 0.44-0.50 - query 마다 hit/miss 강하게 분리. paraphrase 표현이 검색 품질의 dominant 변수.
 
 **해석**:
 - BM25 는 키워드 일치 시드에서 완벽, paraphrase 시드에서 R=0.25 (놓침 많음).
@@ -184,18 +201,23 @@ def embed(text: str) -> np.ndarray:
 - 강한 paraphrase + cloud 가용: **expanded hybrid** (mode="hybrid", glm-4.7
   또는 kimi-k2-thinking).
 
-> **검색 품질 한계 - 솔직한 평가**
+> **검색 품질 한계 - 솔직한 평가** (외부 Opus 4.7 + Codex 5.5 검토 반영)
 >
-> R@5 만 보면 RAG 표준 (0.8+) 미달이지만 P@5 는 0.73-0.75 로 **"5 개 surface
-> 해서 사람이 고르는" UX 에는 충분**. 단 자동 컨텍스트 주입에는 부족.
+> 검색은 **"정답 문서를 자동으로 prepend 하는 RAG"** 가 아니라 **"과거 후보를
+> 사람에게 surface 하는 coding memory"** 로 포지셔닝.
 >
-> **`auto_recall = "always"` 비권장**: R@5 0.5 면 자동 prepend 5개 중 절반이
-> 무관 record. 컨텍스트 오염. 기본값 `"on_request"` (사용자 명시 `tuna_recall`
-> 호출 시만) 를 권장.
+> - **사람 in-the-loop UX**: P@5 0.73-0.75, MRR 0.81 (LOPO) 로 "5 개 보여주고
+>   사람이 고르는" 시나리오에는 합격. tuna_recall 명시 호출 + recall_limit=5.
+> - **자동 prepend (auto_recall=always)**: R@5 0.5 면 절반이 무관 record →
+>   컨텍스트 오염 위험. **기본값 `on_request` 유지 권장**.
+> - **σ 가 진짜 위협**: σP@1 0.44-0.50 (binary metric 거의 max σ), σR@5 0.18-
+>   0.30. query 표현 따라 검색 결과가 들쭉날쭉. 사용자 신뢰의 위협은 평균보다
+>   분산.
+> - **Phase 4-4 컨텍스트 오염 측정**: 5 toy probe 환경에선 always vs never
+>   차이 0 (probe saturation). cross-task probe 로 다음 iteration 예정.
 >
 > always 모드를 꼭 써야 하면 `recall_limit` 을 2-3 으로 작게 두고 결과를
-> 사람이 한 번 보고 판단. 측정 자체 한계로 P@1/MRR 변별력은 다음 phase 에서
-> query/record 분리한 시드로 회복 예정.
+> 사람이 한 번 보고 판단.
 
 자세한 내역: `tests/integration/test_search_quality{,_synonym}.py`,
 `docs/dogfooding-log.md` 의 검색 품질 섹션.
