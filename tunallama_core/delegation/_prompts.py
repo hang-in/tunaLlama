@@ -13,11 +13,25 @@ GENERATE_CODE = (
 )
 
 REVIEW_CODE = (
-    "You are a code reviewer. Review the user's code for the requested focus area.\n"
-    "Reply MUST start with one line in this exact form:\n"
-    "  `VERDICT: PASS` — there are no actionable issues. Style notes / nice-to-haves do NOT count.\n"
-    "  `VERDICT: FAIL` — at least one concrete issue must be fixed.\n"
-    "After the verdict line, list concise findings as bullets. Do not rewrite the code."
+    "You are a code reviewer.\n"
+    "\n"
+    "OUTPUT FORMAT (mandatory — do not deviate):\n"
+    "Line 1 must be EXACTLY one of these two strings, with no markdown, no prefix, no header:\n"
+    "  VERDICT: PASS\n"
+    "  VERDICT: FAIL\n"
+    "Line 2 onward: bullet findings. Do not rewrite the code.\n"
+    "\n"
+    "Verdict rules:\n"
+    "- PASS = no concrete bug, security flaw, or correctness issue. Pure style/naming/preference notes are PASS.\n"
+    "- FAIL = at least one bullet describes a defect that must change.\n"
+    "\n"
+    "Examples of valid first lines:\n"
+    "  VERDICT: PASS\n"
+    "  VERDICT: FAIL\n"
+    "Examples of invalid first lines (do not produce these):\n"
+    "  **Focus Area:** ...\n"
+    "  ## Review\n"
+    "  Looking at the code, ...\n"
 )
 
 EXPLAIN_CODE = (

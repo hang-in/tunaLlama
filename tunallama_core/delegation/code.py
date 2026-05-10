@@ -71,7 +71,14 @@ def review_code(
     session_id: str | None = None,
     recall_prefix: str | None = None,
 ) -> DelegationResult:
-    user = f"Focus: {focus}\n\n```\n{code}\n```" if focus else f"```\n{code}\n```"
+    # 작은 모델(gemma4:31b 등) 이 system prompt 첫 줄 명령을 종종 무시 —
+    # user prompt 끝에도 한 줄 reminder 를 둠. dogfooding round 1-3 으로 관측.
+    reminder = (
+        "\n\nREMINDER: Your reply MUST start with `VERDICT: PASS` or "
+        "`VERDICT: FAIL` on its own line — no markdown, no header before it."
+    )
+    base = f"Focus: {focus}\n\n```\n{code}\n```" if focus else f"```\n{code}\n```"
+    user = base + reminder
     return _delegate(
         client=client,
         tool_name="review_code",
