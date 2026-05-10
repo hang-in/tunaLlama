@@ -57,6 +57,62 @@ def test_korean_lgtm_marker_recognized():
     assert r.converged is True
 
 
+def test_verdict_pass_converges_immediately():
+    """VERDICT: PASS 첫 줄이 있으면 본문에 단점 나열이 있어도 수렴."""
+    c = ScriptedClient(
+        responses=[
+            "code",
+            "VERDICT: PASS\n- minor style note: prefer f-string\n- could add docstring",
+        ]
+    )
+    r = dev_review_loop("write f", client=c, max_iterations=3)
+    assert r.converged is True
+    assert len(r.iterations) == 1
+
+
+def test_verdict_fail_drives_fix_loop():
+    c = ScriptedClient(
+        responses=[
+            "code-v1",
+            "VERDICT: FAIL\n- bug: returns wrong type",
+            "code-v2",
+            "VERDICT: PASS\n- looks fine",
+        ]
+    )
+    r = dev_review_loop("write f", client=c, max_iterations=2)
+    assert r.converged is True
+    assert len(r.iterations) == 2
+    assert r.final_code == "code-v2"
+
+
+def test_verdict_pass_overrides_fp_heuristic():
+    """모델이 PASS 라 했으니 본문의 'issue' 라는 단어 때문에 잘못 fix 루프 들어가면 안 됨."""
+    c = ScriptedClient(
+        responses=[
+            "code",
+            "VERDICT: PASS\n- I see no real issue here, just formatting suggestions",
+        ]
+    )
+    r = dev_review_loop("x", client=c)
+    assert r.converged is True
+
+
+def test_no_verdict_falls_back_to_lgtm_heuristic():
+    """VERDICT 라벨 미작성 → 기존 heuristic 그대로 동작."""
+    c = ScriptedClient(responses=["code", "looks good to me"])
+    r = dev_review_loop("x", client=c)
+    assert r.converged is True
+
+
+def test_no_verdict_and_no_lgtm_treated_as_issues():
+    c = ScriptedClient(
+        responses=["code-v1", "needs work", "code-v2", "still bad"]
+    )
+    r = dev_review_loop("x", client=c, max_iterations=2)
+    assert r.converged is False
+    assert len(r.iterations) == 2
+
+
 def test_max_iterations_must_be_positive():
     c = ScriptedClient(responses=["x"])
     with pytest.raises(ValueError):

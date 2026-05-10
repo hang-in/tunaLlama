@@ -13,8 +13,11 @@ GENERATE_CODE = (
 )
 
 REVIEW_CODE = (
-    "You are a code reviewer. Review the user's code for the requested focus area. "
-    "Return concise findings as a bulleted list. Do not rewrite the code."
+    "You are a code reviewer. Review the user's code for the requested focus area.\n"
+    "Reply MUST start with one line in this exact form:\n"
+    "  `VERDICT: PASS` — there are no actionable issues. Style notes / nice-to-haves do NOT count.\n"
+    "  `VERDICT: FAIL` — at least one concrete issue must be fixed.\n"
+    "After the verdict line, list concise findings as bullets. Do not rewrite the code."
 )
 
 EXPLAIN_CODE = (

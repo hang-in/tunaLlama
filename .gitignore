@@ -26,6 +26,9 @@ env/
 # external tools sometimes drop a .omc/ scratch directory
 .omc/
 
+# dogfooding scratch — generated code samples + ad-hoc test suites
+.dogfooding/
+
 # Local config / runtime data
 .tunallama/
 config.toml
