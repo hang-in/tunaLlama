@@ -13,8 +13,10 @@ import re
 _HANGUL_RE = re.compile(r"[가-힣ㄱ-ㆎ]")
 
 # Kiwi 형태소 태그 중 검색에 의미 있는 것만 유지 (조사/어미/구두점 제거).
-# NNG 일반명사, NNP 고유명사, VV 동사, VA 형용사, MAG 일반부사, MAJ 접속부사, SL 외국어/영문.
-_KEEP_TAGS = {"NNG", "NNP", "VV", "VA", "MAG", "MAJ", "SL"}
+# NNG 일반명사, NNP 고유명사, NNB 의존명사, VV 동사, VA 형용사,
+# MAG 일반부사, MAJ 접속부사, SL 외국어/영문.
+# NNB 추가는 seCall(Rust) 의 토큰화 패턴 참고.
+_KEEP_TAGS = {"NNG", "NNP", "NNB", "VV", "VA", "MAG", "MAJ", "SL"}
 
 _kiwi = None  # lazy: Kiwi() 초기화 비용을 import 시점에서 지연.
 
