@@ -34,7 +34,9 @@ def test_run_delegation_passes_prompts_to_client(static_client):
         user_prompt="user-y",
         inputs_for_log={},
     )
-    assert static_client.calls == [{"system": "sys-x", "prompt": "user-y"}]
+    assert static_client.calls == [
+        {"system": "sys-x", "prompt": "user-y", "response_schema": None}
+    ]
 
 
 def test_run_delegation_records_call_when_store_given(static_client, tmp_path):

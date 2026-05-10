@@ -22,7 +22,28 @@ class ScriptedClient(LLMClient):
     responses: list[str] = field(default_factory=list)
     seen: list[str] = field(default_factory=list)
 
-    def chat(self, *, system: str, prompt: str) -> ChatResponse:
+    def chat(
+        self,
+        *,
+        system: str,
+        prompt: str,
+        response_schema: dict | None = None,
+    ) -> ChatResponse:
+        # classifier 호출(stage-2 verdict) 은 응답 큐 소비하지 않고 자동 분기 — 시나리오
+        # 의 의도(fix 응답이 review 다음 호출로 가는 것)를 보존.
+        if "PASS or FAIL" in system:
+            rl = prompt.lower()
+            # VERDICT 라벨 우선
+            if "verdict: pass" in rl:
+                return ChatResponse(text="PASS", model="fake-cls", duration_ms=1)
+            if "verdict: fail" in rl:
+                return ChatResponse(text="FAIL", model="fake-cls", duration_ms=1)
+            if any(t in rl for t in (
+                "lgtm", "looks good", "이상 없음", "no issues", "no problems",
+                "no real issue",
+            )):
+                return ChatResponse(text="PASS", model="fake-cls", duration_ms=1)
+            return ChatResponse(text="FAIL", model="fake-cls", duration_ms=1)
         self.seen.append(prompt)
         text = self.responses.pop(0) if self.responses else "ok"
         return ChatResponse(text=text, model="fake", duration_ms=1)

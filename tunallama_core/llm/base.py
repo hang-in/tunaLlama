@@ -21,8 +21,18 @@ class LLMClient(ABC):
     """단일 turn 채팅 인터페이스.
 
     Streaming 은 일부러 빼둠 — Phase 1 의 delegation 도구는 일괄 결과만 사용.
+
+    ``response_schema`` 가 주어지면 provider 의 native JSON Schema 강제 모드를
+    켜서 sampling 단에서 형식을 강제한다. 자연어 system 명령이 무시되는 케이스
+    (round 1-5 dogfooding 으로 측정) 의 본질적 해결책.
     """
 
     @abstractmethod
-    def chat(self, *, system: str, prompt: str) -> ChatResponse:
+    def chat(
+        self,
+        *,
+        system: str,
+        prompt: str,
+        response_schema: dict | None = None,
+    ) -> ChatResponse:
         """system + user 메시지 → 응답."""

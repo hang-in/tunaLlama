@@ -113,8 +113,12 @@ def test_tuna_dev_review_runs_loop(fake_state):
     out = mcp_server.tuna_dev_review("write x", "python", 1)
     assert "dev_review" in out
     assert "수렴" in out
-    # generate + review 두 번 호출
-    assert len(fake_state["client"].calls) == 2
+    # generate + review + classifier(stage-2) = 3 호출
+    assert len(fake_state["client"].calls) == 3
+    classifier_calls = [
+        c for c in fake_state["client"].calls if "PASS or FAIL" in c["system"]
+    ]
+    assert len(classifier_calls) == 1
 
 
 def test_tuna_dev_review_from_spec_reads_file(fake_state, tmp_path):

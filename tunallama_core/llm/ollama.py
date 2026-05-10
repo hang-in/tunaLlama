@@ -30,17 +30,28 @@ class OllamaClient(LLMClient):
         self._model = model
         self._options = {"temperature": temperature, "num_ctx": num_ctx}
 
-    def chat(self, *, system: str, prompt: str) -> ChatResponse:
+    def chat(
+        self,
+        *,
+        system: str,
+        prompt: str,
+        response_schema: dict | None = None,
+    ) -> ChatResponse:
+        # Ollama 의 ``format`` 파라미터는 dict (JSON schema) 또는 "json" 문자열을 받음.
+        # schema 가 주어지면 sampling 단에서 형식 강제 — 자연어 명령 무시 회피.
+        kwargs: dict = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ],
+            "options": self._options,
+        }
+        if response_schema is not None:
+            kwargs["format"] = response_schema
         start = time.monotonic()
         try:
-            resp = self._client.chat(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
-                options=self._options,
-            )
+            resp = self._client.chat(**kwargs)
         except (ResponseError, httpx.HTTPError) as e:
             raise LLMError(f"Ollama 호출 실패: {e}") from e
         return ChatResponse(

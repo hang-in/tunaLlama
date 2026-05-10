@@ -32,8 +32,14 @@ class LMStudioClient(LLMClient):
         self._temperature = temperature
         self._timeout = timeout
 
-    def chat(self, *, system: str, prompt: str) -> ChatResponse:
-        body = {
+    def chat(
+        self,
+        *,
+        system: str,
+        prompt: str,
+        response_schema: dict | None = None,
+    ) -> ChatResponse:
+        body: dict = {
             "model": self._model,
             "messages": [
                 {"role": "system", "content": system},
@@ -41,6 +47,17 @@ class LMStudioClient(LLMClient):
             ],
             "temperature": self._temperature,
         }
+        # OpenAI 호환 `response_format.json_schema` — strict 모드면 sampling 강제.
+        # LM Studio 모델별 지원 차이 있으나, schema 미지원 모델은 strict=False 로 hint 동작.
+        if response_schema is not None:
+            body["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "tuna_response",
+                    "schema": response_schema,
+                    "strict": True,
+                },
+            }
         start = time.monotonic()
         try:
             r = httpx.post(

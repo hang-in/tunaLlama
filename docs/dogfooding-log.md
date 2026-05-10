@@ -62,6 +62,55 @@ tunaLlama 자체를 tunaLlama 로 검증한 기록. Phase 2 부터의 작업 흐
 
 ---
 
+## Round 6 — 2026-05-10 · JSON Schema 강제 시도, cloud 미지원 확인
+
+- **변경사항**: `LLMClient.chat` 에 `response_schema` 옵션. Ollama 는
+  `client.chat(format=schema)`, LM Studio 는
+  `body["response_format"]["json_schema"]` 매핑. dev_review_loop 의 review
+  단계에 `REVIEW_SCHEMA = {verdict: PASS|FAIL, findings: [str]}` 강제.
+- **dogfooding 결과**: ✗ JSON 안 옴, markdown 그대로.
+- **직접 검증**: ollama python SDK 로 `format=schema` + cloud 모델
+  4종(`gemma4:31b`, `gpt-oss:20b`, `qwen3-coder-next`, `devstral-small-2:24b`)
+  모두 schema 무시. → **Ollama Cloud 인프라 자체가 schema 강제 미지원**.
+- **LM Studio strict 검증**: 로컬 `nvidia/nemotron-3-nano-4b` 가
+  `response_format.strict=True` 에서 빈 응답 반환 — 모델 capability 부족.
+
+### 결론
+
+자연어로도, schema 로도 첫줄 형식 강제는 우리 환경에서 작동 안 함. 다음 후보는
+**stage-2 classifier**: review freeform 받고, 별도 single-token 호출로
+PASS/FAIL 분류. 한 단어 출력은 모든 모델이 학습된 분포에 정합.
+
+### Stage-2 classifier prerun 측정
+
+같은 4 cloud 모델 모두 strict prompt 에서 `PASS` 또는 `FAIL` 단일 토큰을 깨끗
+하게 출력. 첫 시도에서 모든 모델이 FAIL (boundary 불명확) → "PASS = style /
+version-note / preference, FAIL = bug or wrong output" 명시 prompt 로 모두
+PASS 정확 출력.
+
+→ classifier 가 cloud 환경의 verdict 신뢰성 확보 수단으로 확정.
+
+---
+
+## Round 5 — 2026-05-10 · kimi-k2-thinking 으로 모델 교체
+
+- **변경사항**: `~/.tunallama/config.toml` 의 model 을 `gemma4:31b` →
+  `kimi-k2-thinking` 으로 변경. plugin reload (`/reload-plugins`).
+- **결과**: ✗ **여전히 `**Focus Area: Code Review**` 로 시작**.
+  reasoning 변종 / 더 큰 모델로도 동일 패턴.
+
+### 결정적 발견
+
+- 모델 크기/reasoning 변종은 영향 X. "code review" task 의 학습된 prior
+  (`**Focus Area:**` 헤더 + bullet findings) 가 너무 강해 자연어 system/user
+  명령으로 이길 수 없다.
+- **자연어 강제는 best-effort 가 한계**. sampling-time grammar enforcement
+  (Ollama `format=<schema>` / LM Studio `response_format`) 가 본질적 해결.
+
+→ **Phase 2 코드 변경 정당화**: JSON Schema harness 도입 (round 6 에서 측정).
+
+---
+
 ## Round 4 — 2026-05-10 · review_code user prompt 끝에 reminder 추가
 
 - **변경사항**: `tunallama_core/delegation/code.py::review_code` 가 user prompt

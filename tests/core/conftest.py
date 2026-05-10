@@ -47,8 +47,16 @@ class StaticClient(LLMClient):
     tokens_estimated: int | None = None
     calls: list[dict] = field(default_factory=list)
 
-    def chat(self, *, system: str, prompt: str) -> ChatResponse:
-        self.calls.append({"system": system, "prompt": prompt})
+    def chat(
+        self,
+        *,
+        system: str,
+        prompt: str,
+        response_schema: dict | None = None,
+    ) -> ChatResponse:
+        self.calls.append(
+            {"system": system, "prompt": prompt, "response_schema": response_schema}
+        )
         return ChatResponse(
             text=self.text,
             model=self.model,
