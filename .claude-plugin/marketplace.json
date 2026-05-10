@@ -1,0 +1,15 @@
+{
+  "name": "tunallama-local",
+  "owner": {
+    "name": "d9ng (hang-in)",
+    "url": "https://github.com/hang-in/tunaLlama"
+  },
+  "plugins": [
+    {
+      "name": "tunaLlama",
+      "source": "./plugin",
+      "description": "Delegate heavy code generation to a local LLM (Ollama / LM Studio). Save tokens, keep oversight.",
+      "version": "0.1.0"
+    }
+  ]
+}

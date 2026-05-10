@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "tunallama": {
-      "command": "python",
+      "command": "/Users/d9ng/privateProject/tunaLlama/.venv/bin/python",
       "args": ["-m", "plugin.mcp_server"]
     }
   }
