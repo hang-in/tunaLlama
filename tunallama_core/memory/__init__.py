@@ -8,12 +8,16 @@
 from .search import RecallResult, RecallSnippet, recall
 from .store import CallRecord, MemoryStore
 from .tokenize import has_korean, kiwi_morphemes, tokenize_for_index
+from .vector import EMBEDDING_DIM, EMBEDDING_MODEL, VectorHit
 
 __all__ = [
     "CallRecord",
+    "EMBEDDING_DIM",
+    "EMBEDDING_MODEL",
     "MemoryStore",
     "RecallResult",
     "RecallSnippet",
+    "VectorHit",
     "has_korean",
     "kiwi_morphemes",
     "recall",

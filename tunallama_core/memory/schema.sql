@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS calls (
     tokens_estimated INTEGER,
     project_root TEXT,                 -- 호출 시점 CWD 절대 경로
     session_id TEXT,
-    tags TEXT NOT NULL DEFAULT '[]'    -- JSON 배열
+    tags TEXT NOT NULL DEFAULT '[]',   -- JSON 배열
+    embedding BLOB                     -- Phase 2: float32 × 1024 (BGE-M3). NULL 허용.
 );
 
 CREATE INDEX IF NOT EXISTS idx_calls_timestamp ON calls(timestamp);

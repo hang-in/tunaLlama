@@ -62,6 +62,50 @@ tunaLlama 자체를 tunaLlama 로 검증한 기록. Phase 2 부터의 작업 흐
 
 ---
 
+## Round 7 — 2026-05-10 · Phase 2-1 (vector_recall) · glm-4.7
+
+- **변경사항**: model = `glm-4.7` (config.toml). spec
+  `phase2_vector_recall.md` (244 줄) 으로 dogfooding.
+- **결과**: ✗ **drop-in 통합 불가**. 모델이 spec Constraints 를 무시하고
+  task 를 처음부터 다시 짜는 경향. MemoryStore 새로 작성, FTS5/기존 record_call
+  스키마 무시, schema migration 누락, pytest 6+ 케이스 미작성.
+
+### 잘 한 부분 (참고할 만함)
+
+- `embed()` lazy load + `threading.Lock` self-discovered (race 방지).
+- `SentenceTransformer(...).encode(..., normalize_embeddings=True)` —
+  L2 normalize 의 native flag 사용 (수동 normalize 보다 정확).
+- blob 길이 검증 (`len(blob) != 1024 * 4`) 으로 corrupted record 방어.
+
+### 못 한 부분
+
+- **단일 책임 분리** (spec: vector.py vs store.py 별도) → 한 파일.
+- **기존 BM25 / FTS5 INSERT 보존** → MemoryStore 새로 작성.
+- **schema migration** (calls.embedding 추가) 누락.
+- **Acceptance pytest 6+** 케이스 작성 0개.
+- **import 패턴** — 우리 패키지 구조 (`tunallama_core.memory.*`) 무시,
+  standalone 모듈로 작성.
+
+### 결정적 발견
+
+`gemma4`, `kimi`, `glm-4.7` 모두 **task 처음부터 새로 짜기** prior 가 강함.
+review prompt 의 markdown 형식과 같은 패턴 — 학습 데이터의 흔한 형태가 우리
+spec 의 명시적 Constraints 를 압도. spec 에 "modify, do not rewrite" / 변경할
+파일 경로 + 줄 범위 / 보존할 시그너처 그대로 첨부 — 이런 강한 boundary 가
+없으면 모델은 standalone prototype 을 반환.
+
+### 처리 방침
+
+이번 라운드는 **Architect 가 부분 결과 차용 + 직접 통합** — dogfooding 결과의
+좋은 디테일(thread-lock, normalize_embeddings, blob 검증) 만 가져와 우리
+구조(vector.py 신규 + schema migration + store.py 수정 + 테스트)에 맞춰 작성.
+사용자 의도("Phase 2 도 dogfooding 으로") 를 100% 만족하지 않으나, spec 강화
+후 재호출 비용 대비 효율성 우선.
+
+`tuna_log_limitation` 으로 약점 기록 — 다음 spec 호출에 자동 prepend.
+
+---
+
 ## Round 6 — 2026-05-10 · JSON Schema 강제 시도, cloud 미지원 확인
 
 - **변경사항**: `LLMClient.chat` 에 `response_schema` 옵션. Ollama 는

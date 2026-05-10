@@ -51,6 +51,7 @@ from .memory import (
     MemoryStore,
     RecallResult,
     RecallSnippet,
+    VectorHit,
     recall,
 )
 from .routing import recall_for_delegation
@@ -95,6 +96,7 @@ __all__ = [
     "MemoryStore",
     "RecallResult",
     "RecallSnippet",
+    "VectorHit",
     "recall",
     # routing
     "recall_for_delegation",

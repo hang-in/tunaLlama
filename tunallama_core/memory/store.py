@@ -15,6 +15,7 @@ from pathlib import Path
 
 from ..errors import MemoryStoreError
 from .tokenize import tokenize_for_index
+from .vector import VectorHit, decode_blob, encode_blob
 
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
@@ -69,7 +70,20 @@ class MemoryStore:
             except sqlite3.OperationalError:
                 pass  # :memory: 등 WAL 미지원이면 무시
         self._conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
+        self._migrate_embedding_column()
         return self
+
+    def _migrate_embedding_column(self) -> None:
+        """Phase 2: 옛 db 에 ``embedding`` 컬럼이 없으면 ALTER 로 추가.
+
+        SQLite 의 ``ALTER TABLE ADD COLUMN IF NOT EXISTS`` 가 없어 try/except 로 처리.
+        새 db 는 schema.sql 이 이미 컬럼을 포함하므로 OperationalError 가 나며 그대로 통과.
+        """
+        try:
+            self.conn.execute("ALTER TABLE calls ADD COLUMN embedding BLOB")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # 이미 있으면 OK
 
     def close(self) -> None:
         if self._conn is not None:
@@ -98,18 +112,21 @@ class MemoryStore:
         ts = datetime.now(timezone.utc).isoformat()
         inputs_json = json.dumps(inputs, ensure_ascii=False)
         tags_json = json.dumps(list(tags) if tags else [], ensure_ascii=False)
+        embedding_blob = self._compute_embedding_blob(inputs_json, output)
         c = self.conn
         with self._lock:
             cur = c.execute(
                 """
                 INSERT INTO calls (
                     timestamp, tool_name, inputs_json, output, model,
-                    duration_ms, tokens_estimated, project_root, session_id, tags
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    duration_ms, tokens_estimated, project_root, session_id, tags,
+                    embedding
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     ts, tool_name, inputs_json, output, model,
                     duration_ms, tokens_estimated, project_root, session_id, tags_json,
+                    embedding_blob,
                 ),
             )
             rid = cur.lastrowid
@@ -124,6 +141,75 @@ class MemoryStore:
             )
             c.commit()
         return rid
+
+    def _compute_embedding_blob(self, inputs_json: str, output: str) -> bytes | None:
+        """임베딩 계산 시도. 실패 시 ``None`` — record 자체는 정상 저장.
+
+        모델 import / 다운로드 / 추론 실패 어느 쪽이든 BM25 흐름은 영향 없게.
+        """
+        try:
+            from .vector import embed
+        except ImportError:
+            return None
+        try:
+            vec = embed(f"{inputs_json} {output}")
+            return encode_blob(vec)
+        except Exception:  # noqa: BLE001 — 모델 호출 실패는 옵션 기능 정지로 흡수
+            return None
+
+    def search_vectors(
+        self,
+        query: str,
+        *,
+        limit: int = 5,
+        project_root: str | None = None,
+    ) -> list[VectorHit]:
+        """Phase 2 — cosine 유사도 기반 의미 검색.
+
+        ``embedding IS NOT NULL`` 인 record 만 대상. brute-force (numpy dot
+        product). 1 만 record 까지는 충분히 빠름.
+        임베딩 모델 로드/호출이 실패하면 빈 리스트 반환 — BM25 fallback 은 호출자 몫.
+        """
+        if limit <= 0:
+            return []
+        try:
+            from .vector import embed
+            query_vec = embed(query)
+        except Exception:  # noqa: BLE001
+            return []
+
+        where = "embedding IS NOT NULL"
+        params: list = []
+        if project_root:
+            where += " AND project_root = ?"
+            params.append(project_root)
+
+        sql = (
+            "SELECT id, embedding, inputs_json, output, tool_name, timestamp "
+            f"FROM calls WHERE {where}"
+        )
+        rows = self.conn.execute(sql, params).fetchall()
+
+        hits: list[VectorHit] = []
+        for row in rows:
+            vec = decode_blob(row["embedding"])
+            if vec is None:
+                continue
+            score = float(query_vec @ vec)  # cosine — 양쪽 모두 L2 정규화됨
+            inputs = row["inputs_json"]
+            output = row["output"]
+            hits.append(
+                VectorHit(
+                    id=row["id"],
+                    score=score,
+                    inputs_summary=(inputs or "")[:100],
+                    output_excerpt=(output or "")[:200],
+                    tool_name=row["tool_name"],
+                    timestamp=row["timestamp"],
+                )
+            )
+        hits.sort(key=lambda h: h.score, reverse=True)
+        return hits[:limit]
 
     def get(self, call_id: int) -> CallRecord | None:
         row = self.conn.execute(
