@@ -39,7 +39,7 @@ def test_parse_spec_to_prompt_contains_all_sections():
     p = parse_spec(text).to_prompt()
     assert "Task: T" in p
     assert "Requirements:\nR" in p
-    assert "Constraints:\nC" in p
+    assert "Constraints (treat as hard rules):\nC" in p
     assert "Acceptance:\nA" in p
 
 
@@ -100,3 +100,80 @@ def test_parse_spec_file_missing_raises(tmp_path):
 def test_to_prompt_falls_back_to_raw_when_empty():
     s = parse_spec("")
     assert s.to_prompt() == ""
+
+
+def test_phase_parsed_and_normalized_uppercase():
+    text = textwrap.dedent("""
+        # Task: T
+        ## Phase
+        implement
+        ## Requirements
+        r
+    """)
+    s = parse_spec(text)
+    assert s.phase == "IMPLEMENT"
+
+
+def test_phase_invalid_value_becomes_none():
+    text = textwrap.dedent("""
+        # Task: T
+        ## Phase
+        random
+    """)
+    s = parse_spec(text)
+    assert s.phase is None
+
+
+def test_focus_takes_first_line_only():
+    text = textwrap.dedent("""
+        # Task: T
+        ## Focus
+        error handling first
+        secondary line ignored
+        ## Requirements
+        r
+    """)
+    s = parse_spec(text)
+    assert s.focus == "error handling first"
+
+
+def test_to_prompt_includes_phase_focus_constraints_in_order():
+    text = textwrap.dedent("""
+        # Task: build
+        ## Phase
+        IMPLEMENT
+        ## Focus
+        validation first
+        ## Requirements
+        - regex
+        ## Constraints
+        - stdlib only
+    """)
+    p = parse_spec(text).to_prompt()
+    assert "Phase: IMPLEMENT" in p
+    assert "Task: build" in p
+    assert "Priority focus: validation first" in p
+    assert "Constraints (treat as hard rules)" in p
+    # 순서: Phase → Task → Focus → Requirements → Constraints
+    assert (
+        p.index("Phase: IMPLEMENT")
+        < p.index("Task: build")
+        < p.index("Priority focus")
+        < p.index("Requirements")
+        < p.index("Constraints")
+    )
+
+
+def test_phase_only_no_other_sections():
+    text = "## Phase\nVERIFY\n"
+    s = parse_spec(text)
+    assert s.phase == "VERIFY"
+    assert s.title is None
+    assert s.requirements == ""
+
+
+@pytest.mark.parametrize("phase", ["DESIGN", "IMPLEMENT", "VERIFY"])
+def test_all_valid_phases(phase):
+    text = f"## Phase\n{phase}\n"
+    s = parse_spec(text)
+    assert s.phase == phase

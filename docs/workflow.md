@@ -27,10 +27,17 @@ backend 가 generate → review → (이슈 있으면) fix → 재review 를 자
 
 ### 2.2 spec 문서 기반 — `tuna_dev_review_from_spec`
 요구사항이 길거나 제약/수용기준이 함께 있는 경우, **markdown spec 파일** 로 적어
-경로를 넘긴다.
+경로를 넘긴다. Phase / Focus / Constraints 헤더는 모두 옵션이며, 작은 모델
+일수록 명시할수록 안정적이다 (gemento 검증 패턴).
 
 ```markdown
 # Task: build email validator
+
+## Phase
+IMPLEMENT          # DESIGN | IMPLEMENT | VERIFY 중 하나. subagent 가 단계 벗어나지 않게.
+
+## Focus
+정규식 검증 로직 먼저   # 한 줄 우선순위. 다른 부수 작업보다 이걸 먼저.
 
 ## Requirements
 - 정규식으로 1차 검증
@@ -47,6 +54,9 @@ backend 가 generate → review → (이슈 있으면) fix → 재review 를 자
 ```
 tuna_dev_review_from_spec("docs/specs/email_validator.md", max_iterations=2)
 ```
+
+`Constraints` 의 모든 항목은 hard rule 로 처리된다 — subagent 가 위반하면 review
+에서 잡혀 fix 루프로 들어간다.
 
 ## 3. 약점 카탈로그 — `tuna_log_limitation`
 
