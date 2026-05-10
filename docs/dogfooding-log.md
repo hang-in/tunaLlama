@@ -165,6 +165,26 @@ qwen3-coder:480b            1.00    0.68    0.57    1.00
 
 ---
 
+## Phase 5-1b 결과 - KURE-v1 swap (BGE-M3 → KURE-v1, 10분 14초, cloud 0)
+
+```
+path           BGE-M3 P@1  KURE P@1  diff    BGE-M3 R@5  KURE R@5  diff
+BM25              0.40       0.40    0.00       0.23       0.23    0.00
+vec               0.65       0.67   +0.02       0.42       0.43   +0.01
+hybrid            0.51       0.52   +0.01       0.34       0.34    0.00
+rerank            0.66       0.65   -0.01       0.43       0.43    0.00
+```
+
+- KURE-v1 (`nlpai-lab/KURE-v1`, BGE-M3 finetune, dim 1024 호환) drop-in swap.
+- vec only path 에서 P@1 +0.02 / R@5 +0.01 (외부 가설 "+0.02~0.05" 의
+  lower 끝 확인).
+- BM25/hybrid/rerank 거의 동일 (BM25 는 임베딩 무관, RRF 합산도 영향 흡수).
+- regression 없음.
+- 우리 시드 (한국어/영문 mix, IT 키워드 영문 비중 큼) 에선 KURE 의 한국어
+  특화 강점이 충분히 활용 안 됨. **한국어 비중 큰 corpus 에서 더 큰 효과 가능**.
+- **결정**: BGE-M3 default 유지 + KURE 는 env (`TUNA_EMBEDDING_MODEL`)
+  opt-in. 마진 작아 default 변경 정당화 부족 + 영문 사용자 안정 우선.
+
 ## Phase 5-2D 결과 - MMR λ sweep (full 432 query, 4분 03초, cloud 0)
 
 ```

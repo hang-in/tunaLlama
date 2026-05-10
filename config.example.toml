@@ -38,6 +38,11 @@ enable_embeddings = true
 # auto | cpu | mps | cuda. macOS 일상 사용 시 "cpu" 권장 (다른 앱 GPU 사용 가능).
 # 환경변수 TUNA_EMBEDDING_DEVICE 가 우선.
 embedding_device = "auto"
+# 환경변수 TUNA_EMBEDDING_MODEL 로 BGE-M3 외 모델 swap 가능 (dim 1024 호환만).
+# 후보:
+#   BAAI/bge-m3 (default)         general purpose multilingual
+#   nlpai-lab/KURE-v1             Korean finetune (BGE-M3 기반, dim 1024)
+#   Qwen/Qwen3-Embedding-0.6B     multilingual
 
 [routing]
 # always | on_request | never

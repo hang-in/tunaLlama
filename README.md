@@ -183,6 +183,20 @@ def embed(text: str) -> np.ndarray:
 - P@1 0.71, σR@5 0.22 - HyDE 이전의 best path. 가성비 still good.
 - 함수: `recall_normalized(store, query, *, client, base="hybrid"|"bm25"|"rerank", limit=5)`.
 
+**Phase 5-1b - KURE-v1 임베딩 swap** (BGE-M3 → `nlpai-lab/KURE-v1`, 한국어 finetune)
+
+| path | BGE-M3 P@1 | KURE P@1 | diff | BGE-M3 R@5 | KURE R@5 | diff |
+|---|---:|---:|---:|---:|---:|---:|
+| BM25 | 0.40 | 0.40 | 0.00 | 0.23 | 0.23 | 0.00 |
+| vec | 0.65 | **0.67** | +0.02 | 0.42 | **0.43** | +0.01 |
+| hybrid | 0.51 | 0.52 | +0.01 | 0.34 | 0.34 | 0.00 |
+| rerank | 0.66 | 0.65 | -0.01 | 0.43 | 0.43 | 0.00 |
+
+- regression 없음. vec only path P@1 +0.02 / R@5 +0.01.
+- 우리 시드는 한국어/영문 mix (영문 IT 키워드 비중 큼) - KURE 특화 강점 부분만 발휘.
+- 한국어 비중 큰 corpus 에서 더 큰 효과 가능.
+- **default**: BGE-M3 유지. **opt-in**: 환경변수 `TUNA_EMBEDDING_MODEL=nlpai-lab/KURE-v1`.
+
 **Phase 5-1 - 524 record 시드 LOPO (102 → 524 corpus 확장 효과)**
 
 | 경로 | P@1 | R@5 | MRR | σR@5 |

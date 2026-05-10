@@ -19,8 +19,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-EMBEDDING_MODEL = "BAAI/bge-m3"
-EMBEDDING_DIM = 1024
+DEFAULT_EMBEDDING_MODEL = "BAAI/bge-m3"
+EMBEDDING_MODEL = os.environ.get("TUNA_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
+EMBEDDING_DIM = 1024  # BGE-M3 / KURE-v1 / Qwen3-Embedding-0.6B 모두 1024
 _EMBEDDING_DTYPE = np.float32
 
 _model = None
@@ -49,10 +50,13 @@ class VectorHit:
 
 
 def _get_model():
-    """lazy load - 첫 ``embed()`` 호출 때 BGE-M3 다운로드/로드 (~1GB).
+    """lazy load - 첫 ``embed()`` 호출 때 모델 다운로드/로드 (~1-2GB).
 
-    ``TUNA_EMBEDDING_DEVICE`` 환경변수로 device 강제 가능 (cpu/mps/cuda).
-    macOS 일상 사용에서 GPU 메모리 회복 원하면 ``cpu`` 권장.
+    환경변수:
+    - ``TUNA_EMBEDDING_MODEL``: HuggingFace model id. default ``BAAI/bge-m3``.
+      대안: ``nlpai-lab/KURE-v1`` (Korean finetune), ``Qwen/Qwen3-Embedding-0.6B``.
+      모델 dim 이 1024 와 다르면 측정 실패하므로 같은 dim 모델만 swap.
+    - ``TUNA_EMBEDDING_DEVICE``: cpu / mps / cuda. macOS 일상 사용엔 cpu 권장.
     """
     global _model
     with _model_lock:
