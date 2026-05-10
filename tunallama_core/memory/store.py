@@ -76,6 +76,7 @@ class MemoryStore:
                 pass  # :memory: 등 WAL 미지원이면 무시
         self._conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
         self._migrate_embedding_column()
+        self._migrate_target_file_path_column()
         return self
 
     def _migrate_embedding_column(self) -> None:
@@ -89,6 +90,18 @@ class MemoryStore:
             self.conn.commit()
         except sqlite3.OperationalError:
             pass  # 이미 있으면 OK
+
+    def _migrate_target_file_path_column(self) -> None:
+        """Phase 6-3: ``calls.target_file_path`` 컬럼 - delegation 결과가 쓰인
+        파일 경로. diff-based learning 의 anchor.
+        """
+        try:
+            self.conn.execute(
+                "ALTER TABLE calls ADD COLUMN target_file_path TEXT"
+            )
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass
 
     def close(self) -> None:
         if self._conn is not None:
@@ -113,6 +126,7 @@ class MemoryStore:
         project_root: str | None = None,
         session_id: str | None = None,
         tags: Iterable[str] | None = None,
+        target_file_path: str | None = None,
     ) -> int:
         ts = datetime.now(timezone.utc).isoformat()
         inputs_json = json.dumps(inputs, ensure_ascii=False)
@@ -125,13 +139,13 @@ class MemoryStore:
                 INSERT INTO calls (
                     timestamp, tool_name, inputs_json, output, model,
                     duration_ms, tokens_estimated, project_root, session_id, tags,
-                    embedding
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    embedding, target_file_path
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     ts, tool_name, inputs_json, output, model,
                     duration_ms, tokens_estimated, project_root, session_id, tags_json,
-                    embedding_blob,
+                    embedding_blob, target_file_path,
                 ),
             )
             rid = cur.lastrowid
@@ -146,6 +160,23 @@ class MemoryStore:
             )
             c.commit()
         return rid
+
+    def set_target_file_path(self, call_id: int, path: str) -> None:
+        """기존 call 의 target_file_path 사후 설정 - delegation 후 사용자/Claude
+        가 결과를 파일에 쓴 시점에 link.
+        """
+        with self._lock:
+            self.conn.execute(
+                "UPDATE calls SET target_file_path = ? WHERE id = ?",
+                (path, call_id),
+            )
+            self.conn.commit()
+
+    def get_target_file_path(self, call_id: int) -> str | None:
+        row = self.conn.execute(
+            "SELECT target_file_path FROM calls WHERE id = ?", (call_id,)
+        ).fetchone()
+        return row["target_file_path"] if row else None
 
     def _compute_embedding_blob(self, inputs_json: str, output: str) -> bytes | None:
         """임베딩 계산 시도. ``enable_embeddings=False`` 거나 실패 시 ``None``.
