@@ -37,8 +37,10 @@ _SECRET_NAME_RE = re.compile(
 
 # 비밀 디렉토리 — 경로 어디서든 해당 세그먼트가 나타나면 거부.
 _SECRET_DIR_PARTS = frozenset(
-    {".ssh", ".aws", ".gnupg", ".kube", ".azure", ".gcloud"}
+    {".ssh", ".aws", ".gnupg", ".kube", ".azure", ".gcloud", ".git"}
 )
+# `.git` 추가: project_root 가 git repo 인 경우, .git/config 에 user.email/remote URL,
+# .git/credentials, .git/hooks 등 LLM 으로 보내면 안 되는 것이 들어있을 수 있다.
 
 
 def _reject_secret_paths(p: Path) -> None:

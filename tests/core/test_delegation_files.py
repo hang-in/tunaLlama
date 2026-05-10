@@ -174,7 +174,7 @@ def test_secret_filename_patterns_rejected(static_client, tmp_path, name):
         review_file(str(f), client=static_client, project_root=str(tmp_path))
 
 
-@pytest.mark.parametrize("dirname", [".ssh", ".aws", ".gnupg"])
+@pytest.mark.parametrize("dirname", [".ssh", ".aws", ".gnupg", ".git"])
 def test_secret_directories_rejected(static_client, tmp_path, dirname):
     d = tmp_path / dirname
     d.mkdir()
