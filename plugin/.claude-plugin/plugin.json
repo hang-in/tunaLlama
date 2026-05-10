@@ -1,7 +1,7 @@
 {
   "name": "tunaLlama",
-  "version": "0.3.0",
-  "description": "Delegate heavy code generation to a local LLM (Ollama / LM Studio). Isolate the main conversation context, keep oversight.",
+  "version": "0.4.0",
+  "description": "Delegate heavy code generation to a local LLM (Ollama / LM Studio). Memory layer for project context.",
   "author": {
     "name": "d9ng (hang-in)",
     "url": "https://github.com/hang-in/tunaLlama"

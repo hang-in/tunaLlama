@@ -6,7 +6,7 @@ Heavy code generation is delegated to local Ollama / LM Studio /
 Ollama Cloud; decomposition and verification stay with Claude in the
 same session. Runs as a Claude Code MCP plugin.
 
-**Status**: alpha, Phase 5 complete (v0.3.0), Phase 6 upcoming.
+**Status**: alpha, Phase 6 complete (v0.4.0) - search + memory layer.
 **License**: MIT. **Korean**: [README.md](README.md) (canonical).
 
 ---
