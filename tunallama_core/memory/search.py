@@ -126,6 +126,50 @@ def _truncate(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
+def recall_reranked(
+    store: MemoryStore,
+    query: str,
+    *,
+    limit: int = 5,
+    project_root: str | None = None,
+    candidate_pool: int = 20,
+    base: str = "hybrid",
+) -> RecallResult:
+    """1차 검색(BM25/hybrid) 후 cross-encoder 로 재정렬.
+
+    ``base``:
+    - ``"hybrid"`` (기본): `recall_hybrid` 로 candidate_pool 후보 → reranker.
+    - ``"bm25"``: `recall` 로 후보 → reranker.
+
+    `BAAI/bge-reranker-v2-m3` 가 query-doc 페어 점수 재산출 → top ``limit``.
+    모델 미설치/실패 시 1차 결과의 top ``limit`` 그대로 반환 (graceful degrade).
+    """
+    if limit <= 0:
+        raise RecallError(f"limit 는 양수여야 합니다: {limit}")
+    if base not in ("bm25", "hybrid"):
+        raise RecallError(f"base 는 'bm25' 또는 'hybrid' 여야: {base!r}")
+
+    if base == "bm25":
+        initial = recall(store, query, limit=candidate_pool, project_root=project_root)
+    else:
+        initial = recall_hybrid(
+            store, query, limit=candidate_pool, project_root=project_root
+        )
+
+    if not initial.snippets:
+        return initial
+
+    try:
+        from .reranker import rerank
+        reranked = rerank(query, initial.snippets, top_k=limit)
+    except Exception:  # noqa: BLE001 - 모델 로드/호출 실패 시 1차 결과 사용
+        reranked = list(initial.snippets[:limit])
+
+    return RecallResult(
+        query=query, total_matches=initial.total_matches, snippets=tuple(reranked)
+    )
+
+
 def recall_expanded(
     store: MemoryStore,
     query: str,

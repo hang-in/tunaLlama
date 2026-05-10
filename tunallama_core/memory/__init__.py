@@ -7,12 +7,14 @@
 
 from .graph import Edge, rebuild_edges, traverse
 from .query_expansion import expand_query
+from .reranker import RERANKER_MODEL, rerank
 from .search import (
     RecallResult,
     RecallSnippet,
     recall,
     recall_expanded,
     recall_hybrid,
+    recall_reranked,
 )
 from .semantic_edges import build_semantic_edges, classify_pair
 from .store import CallRecord, MemoryStore
@@ -30,6 +32,7 @@ __all__ = [
     "VectorHit",
     "build_semantic_edges",
     "classify_pair",
+    "RERANKER_MODEL",
     "expand_query",
     "has_korean",
     "kiwi_morphemes",
@@ -37,6 +40,8 @@ __all__ = [
     "recall",
     "recall_expanded",
     "recall_hybrid",
+    "recall_reranked",
+    "rerank",
     "tokenize_for_index",
     "traverse",
 ]

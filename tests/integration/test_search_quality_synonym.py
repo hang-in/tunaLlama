@@ -14,7 +14,12 @@ import pytest
 
 from tunallama_core.config.models import OllamaCloudProviderConfig
 from tunallama_core.llm.ollama import from_cloud
-from tunallama_core.memory.search import recall, recall_expanded, recall_hybrid
+from tunallama_core.memory.search import (
+    recall,
+    recall_expanded,
+    recall_hybrid,
+    recall_reranked,
+)
 from tunallama_core.memory.store import MemoryStore
 
 pytestmark = pytest.mark.search_quality
@@ -195,6 +200,67 @@ def test_recall_expanded_quality_vs_bm25_hybrid(synonym_store, cloud_client, cap
     assert avg[3] >= avg[0], (
         f"expanded BM25 R@5 ({avg[3]:.2f}) >= BM25 R@5 ({avg[0]:.2f}) 기대 — "
         f"expansion 이 BM25 의 paraphrase 약점을 공략 못함"
+    )
+
+
+def test_recall_reranked_quality(synonym_store, capsys):
+    """cross-encoder reranker 의 R@5 영향 측정.
+
+    1차 hybrid (candidate_pool=20) → BAAI/bge-reranker-v2-m3 reranker → top-5.
+    첫 호출 시 reranker 모델 ~600MB 다운로드.
+    """
+    bm25_r = vec_r = hyb_r = rer_h_r = rer_b_r = 0.0
+    rows: list[tuple[str, float, float, float, float, float]] = []
+
+    for idx, (label, phrases) in enumerate(_GROUPS):
+        query = phrases[0]
+        relevant = _relevant_set(idx)
+
+        bm = [s.full_id for s in recall(synonym_store, query, limit=10).snippets]
+        vec = [h.id for h in synonym_store.search_vectors(query, limit=10)]
+        hy = [
+            s.full_id for s in recall_hybrid(synonym_store, query, limit=10).snippets
+        ]
+        rh = [
+            s.full_id
+            for s in recall_reranked(
+                synonym_store, query, limit=10, candidate_pool=20, base="hybrid"
+            ).snippets
+        ]
+        rb = [
+            s.full_id
+            for s in recall_reranked(
+                synonym_store, query, limit=10, candidate_pool=20, base="bm25"
+            ).snippets
+        ]
+
+        _, br = _precision_recall(bm, relevant)
+        _, vr = _precision_recall(vec, relevant)
+        _, hr = _precision_recall(hy, relevant)
+        _, rhr = _precision_recall(rh, relevant)
+        _, rbr = _precision_recall(rb, relevant)
+
+        rows.append((label, br, vr, hr, rhr, rbr))
+        bm25_r += br; vec_r += vr; hyb_r += hr; rer_h_r += rhr; rer_b_r += rbr
+
+    n = len(_GROUPS)
+    avg = (bm25_r/n, vec_r/n, hyb_r/n, rer_h_r/n, rer_b_r/n)
+
+    with capsys.disabled():
+        print("\n\n=== Cross-encoder reranker (R@5) ===")
+        print(f"{'group':<22}{'BM25':>8}{'vec':>8}{'hyb':>8}{'rer+H':>8}{'rer+B':>8}")
+        print("-" * 62)
+        for label, br, vr, hr, rhr, rbr in rows:
+            print(f"{label[:20]:<22}{br:>8.2f}{vr:>8.2f}{hr:>8.2f}{rhr:>8.2f}{rbr:>8.2f}")
+        print("-" * 62)
+        print(f"{'AVG':<22}{avg[0]:>8.2f}{avg[1]:>8.2f}{avg[2]:>8.2f}{avg[3]:>8.2f}{avg[4]:>8.2f}")
+        print()
+
+    # reranker 가 vector / hybrid 보다 떨어지면 안 됨 - candidate_pool 충분히 크면.
+    upper = max(avg[1], avg[2])
+    assert avg[3] >= upper - 0.05, (
+        f"reranker+hybrid R@5 ({avg[3]:.2f}) >= max(vec, hyb) - 0.05 "
+        f"= {upper - 0.05:.2f} 기대"
     )
 
 

@@ -63,6 +63,38 @@ AVG                       0.25    0.67    0.67    0.50    0.67
 - 호출당 ~1초가 아니라 평균 60-110 초 - cloud 응답 지연 큼. 실 사용에서는
   비용/지연 trade-off 고려해 `mode="bm25"` (paraphrase 약점 공략) 만 권장.
 
+### Cross-encoder reranker 측정 (Phase 3.6)
+
+`BAAI/bge-reranker-v2-m3` (~600MB) 도입. 1차 hybrid candidate_pool=20 → reranker.
+
+```
+group                     BM25     vec     hyb   rer+H   rer+B
+--------------------------------------------------------------
+memory_leak               0.17    0.50    0.50    0.50    0.17
+email_validation          0.17    0.67    0.67    0.83    0.17
+file_compression          0.17    0.83    0.83    0.83    0.17
+json_parsing              0.67    0.67    0.67    0.67    0.67
+password_hashing          0.17    0.67    0.67    0.67    0.17
+rate_limit                0.17    0.67    0.67    0.67    0.17
+--------------------------------------------------------------
+AVG                       0.25    0.67    0.67    0.69    0.25
+```
+
+- rer+H R@5 = 0.69 vs hybrid 0.67 - **+0.02, 거의 noise 수준**.
+- rer+B = 0.25 - 1차 BM25 의 R 한계 그대로 (1차에 못 잡힌 record 는 reranker 도 못 살림).
+- email_validation 만 0.67→0.83 - 재정렬이 도움 된 유일한 케이스.
+
+**원인 추정**:
+- 시드 36 record 작음. reranker 의 진가는 큰 noisy corpus.
+- paraphrase 가 명확해 bi-encoder candidate_pool=20 에 정답 6 개 다 들어감 → 재정렬 여지 X.
+- R@5 보다 P@1 / MRR 에 reranker 효과 더 큼 - 우리 측정 안 함.
+
+**검색 품질 한계 인정 + 가이드**:
+- `auto_recall = "always"` 비권장. 기본값 `on_request` 유지.
+- README 에 검색 품질 한계 경고 명시 (4.3 섹션).
+- 코드는 모두 활성화 유지 (graceful degrade) - 사용자가 큰 corpus 에서 옵션 사용.
+- precision-aware 측정 (P@1, MRR) + 더 큰 시드는 Phase 4 후보.
+
 ## Round 11 — 2026-05-10 · Phase 3-2 (semantic_edges) · glm-4.7
 
 - spec: `LLMClient` + `MemoryStore.graph_edges` + `rebuild_edges` 변경 명시.

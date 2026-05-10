@@ -145,6 +145,8 @@ def embed(text: str) -> np.ndarray:
 | hybrid (RRF) | 0.67 |
 | **expanded BM25** (LLM query expansion) | **0.50** |
 | expanded hybrid | 0.67 |
+| reranked hybrid (cross-encoder bge-reranker-v2-m3) | 0.69 |
+| reranked BM25 | 0.25 |
 
 **해석**:
 - BM25 는 키워드 일치 시드에서 완벽, paraphrase 시드에서 R=0.25 (놓침 많음).
@@ -154,10 +156,27 @@ def embed(text: str) -> np.ndarray:
 - **LLM query expansion** (`recall_expanded`, mode="bm25") 이 BM25 paraphrase
   recall 을 **2배 향상** (0.25 → 0.50). vector 가 이미 강한 환경(0.67)
   에서는 expansion 한계 효용 X. 검색당 LLM 1 회 비용.
+- **Cross-encoder reranker** (`recall_reranked`, base="hybrid") 의 R@5 향상
+  은 미미 (0.67 → 0.69). 우리 시드(36 record)가 작고 paraphrase 가 명확해
+  bi-encoder 만으로도 candidate_pool 안에 정답이 다 들어가서 재정렬 여지 X.
+  큰 corpus / noisy 환경에서 재측정 + P@1/MRR 측정 필요.
 
 **의사결정**: 일상 메모리 검색은 BM25(Kiwi) 만으로 충분. 다양한 표현으로 같은
 task 를 검색하는 시나리오에서는 `MemoryStore.search_vectors` 또는
 `recall_hybrid`. 두 path 모두 backend 에 살아있음.
+
+> **검색 품질 한계 - 솔직한 평가**
+>
+> 측정 수치는 RAG 표준 (R@5 0.8+ 권장) 미달. BM25 0.25 / vector 0.67 /
+> expanded BM25 0.50 은 "검색이 잘 된다" 보다는 "참고용 후보 surface" 수준.
+>
+> **`auto_recall = "always"` 비권장**: precision 보장이 약해 무관한 과거
+> record 가 dev_review prompt 에 섞일 위험. 컨텍스트 오염 가속. 기본값
+> `"on_request"` (사용자 명시 `tuna_recall` 호출만) 를 권장.
+>
+> always 모드를 꼭 써야 하면 `recall_limit` 을 2-3 으로 작게 두고 결과를
+> 사람이 한 번 보고 판단. Phase 4 의 cross-encoder reranker 가 들어오면
+> precision 향상 후 재고려.
 
 자세한 내역: `tests/integration/test_search_quality{,_synonym}.py`,
 `docs/dogfooding-log.md` 의 검색 품질 섹션.

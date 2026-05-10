@@ -60,6 +60,8 @@ from .memory import (
     recall,
     recall_expanded,
     recall_hybrid,
+    recall_reranked,
+    rerank,
     traverse,
 )
 from .routing import recall_for_delegation
@@ -107,6 +109,8 @@ __all__ = [
     "classify_pair",
     "expand_query",
     "recall_expanded",
+    "recall_reranked",
+    "rerank",
     "RecallResult",
     "RecallSnippet",
     "VectorHit",
