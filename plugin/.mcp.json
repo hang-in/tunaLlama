@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tunallama": {
+      "command": "python",
+      "args": ["-m", "plugin.mcp_server"]
+    }
+  }
+}
