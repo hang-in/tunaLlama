@@ -148,6 +148,32 @@ def embed(text: str) -> np.ndarray:
 | reranked hybrid (cross-encoder bge-reranker-v2-m3) | 0.69 |
 | reranked BM25 | 0.25 |
 
+**Phase 5-2 - LLM query normalization (production RAG winner, 524 record, 24 group leader sample)**
+
+| 경로 | P@1 | R@5 | MRR | NDCG@5 | σR@5 |
+|---|---:|---:|---:|---:|---:|
+| hybrid baseline | 0.33 | 0.30 | 0.50 | 0.31 | 0.28 |
+| **normalized hybrid** | **0.71** | **0.42** | **0.79** | **0.49** | **0.22** |
+
+- LLM 으로 query 를 standard form 으로 재작성 후 hybrid 검색.
+- P@1 +0.38, σR@5 -0.06 - **production RAG 에 가장 가까운 path**.
+- expanded hybrid (P@1 0.67, cloud LLM 2회) 보다 높은 P@1 + cloud 1회 = 가성비 1위.
+- 함수: `recall_normalized(store, query, *, client, base="hybrid"|"bm25"|"rerank", limit=5)`.
+
+**Phase 5-1 - 524 record 시드 LOPO (102 → 524 corpus 확장 효과)**
+
+| 경로 | P@1 | R@5 | MRR | σR@5 |
+|---|---:|---:|---:|---:|
+| BM25 | 0.40 | 0.23 | 0.52 | 0.21 |
+| vector | 0.65 | 0.42 | 0.75 | 0.24 |
+| hybrid | 0.51 | 0.34 | 0.65 | 0.23 |
+| reranked hybrid | 0.66 | 0.43 | 0.75 | 0.26 |
+| expanded hybrid | 0.67 | 0.44 | 0.78 | 0.23 |
+
+- corpus 102 → 524 로 키우면 σR@5 -0.04 ~ -0.06 ↓ (외부 검토 가설 H1 ✓).
+- rerank P@1 +0.04 (외부 H2 ✓ - 큰 noisy corpus 일수록 reranker 가치 ↑).
+- R@5 일괄 -0.04 ~ -0.11 - candidate_pool=20 한도가 발목. limit 확대로 보완.
+
 **Phase 4 - 확장 시드** (102 record = 12 task × 6 paraphrase + 30 noise; 12 query × 6 paraphrase = 72 query):
 
 | 경로 | P@5 | R@5 |
@@ -201,23 +227,23 @@ corpus = 그 task 의 5 paraphrase + 다른 task 의 모든 paraphrase + 30 nois
 - 강한 paraphrase + cloud 가용: **expanded hybrid** (mode="hybrid", glm-4.7
   또는 kimi-k2-thinking).
 
-> **검색 품질 한계 - 솔직한 평가** (외부 Opus 4.7 + Codex 5.5 검토 반영)
+> **검색 품질 - production RAG 진행 상황** (Phase 5 측정 종합)
 >
-> 검색은 **"정답 문서를 자동으로 prepend 하는 RAG"** 가 아니라 **"과거 후보를
-> 사람에게 surface 하는 coding memory"** 로 포지셔닝.
+> | 사용 시나리오 | path | P@1 | σR@5 | 가성비 |
+> |---|---|---:|---:|---|
+> | 키워드 일치 | BM25 (Kiwi) | 0.40 | 0.21 | cloud 0, 빠름 |
+> | 가벼운 paraphrase | reranked hybrid | 0.66 | 0.26 | cloud 0 |
+> | 강한 paraphrase | expanded hybrid | 0.67 | 0.23 | cloud 2회 |
+> | **production RAG** | **normalized hybrid** | **0.71** | **0.22** | **cloud 1회** |
 >
-> - **사람 in-the-loop UX**: P@5 0.73-0.75, MRR 0.81 (LOPO) 로 "5 개 보여주고
->   사람이 고르는" 시나리오에는 합격. tuna_recall 명시 호출 + recall_limit=5.
-> - **자동 prepend (auto_recall=always)**: R@5 0.5 면 절반이 무관 record →
->   컨텍스트 오염 위험. **기본값 `on_request` 유지 권장**.
-> - **σ 가 진짜 위협**: σP@1 0.44-0.50 (binary metric 거의 max σ), σR@5 0.18-
->   0.30. query 표현 따라 검색 결과가 들쭉날쭉. 사용자 신뢰의 위협은 평균보다
->   분산.
-> - **Phase 4-4 컨텍스트 오염 측정**: 5 toy probe 환경에선 always vs never
->   차이 0 (probe saturation). cross-task probe 로 다음 iteration 예정.
->
-> always 모드를 꼭 써야 하면 `recall_limit` 을 2-3 으로 작게 두고 결과를
-> 사람이 한 번 보고 판단.
+> - **normalized hybrid 가 P@1 / σ / 비용 모두 winner**. 524 record LOPO 측정.
+> - σR@5 0.22 - 외부 권고 목표 0.15 에 점진 접근. 시드 확장 + normalization 효과.
+> - **`auto_recall=always` 의 risk** : Phase 4-4 + 5-3 측정 모두 cloud LLM
+>   (glm-4.7) 이 무관 recall prefix 강하게 무시 (kw_hit 0%). 즉 **자동 prepend
+>   는 도움도 해도 작음**. 결론: 자동 prepend 자체에 큰 가치 없음. 기본값
+>   `on_request` (사용자 명시 `tuna_recall` 호출) 유지가 정합.
+> - **recall 의 진짜 가치** = 사용자가 명시 호출 → 5 후보 surface → 사람이
+>   판단. P@5 0.73-0.75 / MRR 0.78-0.81 으로 이 UX 에 충분.
 
 자세한 내역: `tests/integration/test_search_quality{,_synonym}.py`,
 `docs/dogfooding-log.md` 의 검색 품질 섹션.

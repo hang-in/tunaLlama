@@ -165,6 +165,96 @@ qwen3-coder:480b            1.00    0.68    0.57    1.00
 
 ---
 
+## Phase 5-2 결과 - σ reduction (variance 잡기)
+
+### Path A - normalized (LLM query 정규화 + hybrid, 24 group sample, 39분 55초)
+
+```
+path                   P@1     R@5     MRR    NDCG@5    σP@1    σR@5   σNDCG
+hybrid_baseline       0.33    0.30    0.50      0.31    0.48    0.28    0.29
+normalized            0.71    0.42    0.79      0.49    0.46    0.22    0.24
+σR@5 reduction = -0.06 (개선)
+```
+
+- **P@1 +0.38 (0.33 → 0.71)** = 거대한 ranking 개선.
+- σR@5 -0.06, σNDCG -0.05.
+- LLM 으로 query 를 standard English form 으로 재작성 → 검색 path 가 표면
+  토큰에 덜 의존, σ 안정.
+- **expanded path 의 P@1 0.67 보다 높음** (524 record). cloud LLM 1 회만
+  쓰고도 expanded (2 회) 이김. **production RAG 의 가성비 winner**.
+
+### Path B - tiered threshold sweep (cloud 0, 432 query × 3 preset, 2분 52초)
+
+```
+preset                 P@1     R@5     MRR    NDCG@5    σP@1    σR@5   σNDCG   avg_n
+relax (default)       0.51    0.32    0.64      0.37    0.50    0.23    0.25    12.5
+medium                0.51    0.27    0.61      0.33    0.50    0.21    0.25     7.5
+strict                0.50    0.26    0.59      0.31    0.50    0.22    0.25     7.2
+```
+
+- σR@5 0.21-0.23 거의 동일 (-0.02 미만). **filter 효과 X**.
+- strict 일수록 R@5 ↓ (true relevant false negative).
+- **결론**: tiered threshold 만으로는 σ 못 잡음. UX 분리 (사용자에게 신뢰도
+  표시) 가치는 남으나, σ reduction 의 진짜 winner 는 path A.
+
+## Phase 5-3 결과 - cross-task pollution (architect 직접, 31분 19초)
+
+```
+mode              n   valid   kw_hit%    excess
+never            18    1.00      0.0%      0.11
+always_adv       18    1.00      0.0%      0.00
+```
+
+6 probe (all isolated function) × 2 mode × 3 run = 36 generate_code + AST smell.
+mode "always_adv" = 의도적으로 spec 무관한 recall prefix prepend (e.g. GCD
+task 에 password_hashing record).
+
+- **per-probe kw_hit always_adv 0%** - cloud LLM (glm-4.7) 이 무관 prefix
+  강하게 무시. instruction-following spec 우선.
+- excess_score: never 0.11 → always_adv 0.00 (오히려 always 가 약간 깨끗).
+- Phase 4-4 (toy probe saturate) + Phase 5-3 (kw 0%) 합의: **cloud LLM 의
+  무관 컨텍스트 자동 필터링이 강하다**. context pollution risk 가 우려보다 작음.
+- 단 recall prefix 의 positive 효과도 없음 - **"recall 가치는 prepend 가
+  아니라 사용자 명시 호출 surface"** 결론 강화.
+
+## Phase 5-1 결과 - 524 record LOPO (architect 직접, 23분 54초)
+
+102 → 524 record 시드 (12 기존 + 60 round 16 dogfooding 차용 + 92 noise).
+
+```
+=== local paths (432 query / path) ===
+path           P@1     R@5     MRR    NDCG@5    σP@1    σR@5   σNDCG
+BM25          0.40    0.23    0.52      0.27    0.49    0.21    0.24
+vec           0.65    0.42    0.75      0.48    0.48    0.24    0.27
+hybrid        0.51    0.34    0.65      0.38    0.50    0.23    0.26
+rerank        0.66    0.43    0.75      0.49    0.47    0.26    0.28
+
+=== expanded sample (24 group leader) ===
+exp+H         0.67    0.44    0.78      0.50    0.48    0.23    0.24
+```
+
+### 102 vs 524 record 비교 (외부 가설 검증)
+
+| metric | 102 | 524 | diff | hypothesis |
+|---|---:|---:|---:|---|
+| σR@5 vec | 0.29 | 0.24 | -0.05 | **H1 ✓** corpus 커지면 σ 감소 |
+| σR@5 exp+H | 0.29 | 0.23 | -0.06 | **H1 ✓** |
+| σR@5 rerank | 0.30 | 0.26 | -0.04 | **H1 ✓** |
+| rerank P@1 | 0.62 | 0.66 | +0.04 | **H2 ✓** rerank 가치 ↑ |
+| exp+H P@1 | 0.74 | 0.67 | -0.07 | candidate 경쟁 ↑ |
+| R@5 vec/hyb/rer | - | - | -0.04 ~ -0.11 | distractor 늘어남 (정상) |
+
+### 의미
+
+- **σ 감소** = 외부 Opus 4.7 의 핵심 가설 정량 확인. 524 record 만 가도
+  σR@5 < 0.25 도달. 1k+ corpus 면 더 안정될 가능성.
+- **rerank 의 진가는 큰 corpus**. 102 record 환경에선 미미했지만 524 환경
+  에서 P@1 +0.04. Codex 5.5 의 "큰 noisy corpus 일수록 reranker 가치" 일치.
+- **expanded path 의 R@5 0.44** - 524 환경에서도 path 1위. cloud LLM 비용
+  받아들이면 production-grade 검색 품질 가능.
+- **R@5 일괄 하락** - candidate_pool=20 한도가 발목. Phase 5-2b 후보:
+  candidate_pool=50 으로 확대.
+
 ## Phase 4-3b LOPO 측정 결과 - 2026-05-10 (architect 직접, 1시간 16분)
 
 LOPO (leave-one-paraphrase-out) - 72 query (12 task × 6 회전).
@@ -217,6 +307,32 @@ always        2.00    2.00    2.00    2.00    8.00
   positive signal.
 - 결정적 증거 X. cross-task probe + AST smell + paired design 으로 다음
   iteration 필요 (memory `project_phase4_followups.md`).
+
+## Round 16 - 2026-05-10 · Phase 5-1 시드 합성 · glm-4.7 · `tuna_general_task` 채널
+
+- 위임 도구 변경: `tuna_dev_review_from_spec` (spec→generate→review)
+  → `tuna_general_task` (catch-all). round 7-15 의 standalone-toy 패턴은
+  **dev_review 흐름 자체가 코드 작성 모드 강제**한 결과로 추정.
+- 위임 내용: 60 task × 6 paraphrase + 60 noise. 출력 형식 명시 + Forbidden
+  Patterns (함수/import/pytest/f-string fake) 강조.
+- 결과: ✓ **첫 차용 가능 dogfooding**. NEW_GROUPS_60 = 60 list, 각 6
+  paraphrase 한국어/영문 mix. NOISE_60 = 60 string. **함수 정의 / pytest /
+  f-string fake 0**.
+- 사소한 결함: noise 마지막 부분에 git commit/push/pull/merge 등 9 개 git
+  키워드 중복. architect 통합 시 일부 다양화 또는 그대로 두기.
+- 결론: dogfooding 의 진짜 통증은 spec 형식이 아니라 **위임 채널**. spec
+  형식 (negative limitations / positive grounding) 는 둘 다 dev_review 흐름
+  안에서는 무력. catch-all 채널이 자유 출력 가능.
+
+## Round 15 - 2026-05-10 · Phase 5-1 시드 첫 시도 · glm-4.7 · dev_review_from_spec
+
+- spec: "list literal 만, 함수/import/pytest X" 명시. round 14 와 같이
+  positive + negative grounding 모두.
+- 결과: ✗ 또 standalone-toy. pytest 함수 + `is_korean()` / `is_english()`
+  helper + f-string fake paraphrase ("한국어 작업 1 (v1)" 같은). 9 회 일관 패턴.
+- 차용 가치: 0.
+- 결정적 시그널: **bounded output 위임에도 dev_review 흐름은 코드 모드**.
+  → round 16 에서 채널 변경.
 
 ## Round 14 - 2026-05-10 · Phase 4-3b (LOPO) · glm-4.7 · positive grounding 첫 시험
 

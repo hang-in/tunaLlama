@@ -267,3 +267,39 @@ def recall_hybrid(
     ranked_ids = sorted(scores.keys(), key=lambda i: scores[i], reverse=True)
     top = tuple(snippet_map[i] for i in ranked_ids[:limit])
     return RecallResult(query=query, total_matches=len(scores), snippets=top)
+
+
+def recall_normalized(
+    store: MemoryStore,
+    query: str,
+    *,
+    client,
+    base: str = "hybrid",
+    limit: int = 5,
+    project_root: str | None = None,
+) -> RecallResult:
+    """Phase 5-2 path A - LLM 으로 query 를 standard form 으로 정규화 후 검색.
+
+    Phase 5-2 측정 (524 record LOPO) 에서 hybrid baseline 대비 P@1 +0.38,
+    σR@5 -0.06 의 강한 개선. cloud LLM 1 회 호출 비용 - expanded 의 2 회
+    호출보다 가성비 좋음.
+
+    base 는 "hybrid" (default) / "bm25" / "rerank". 정규화된 query 로 해당
+    path 호출. LLM 실패 시 ``normalize_query`` 가 원 query fallback.
+    """
+    from .normalization import normalize_query
+
+    if base not in ("hybrid", "bm25", "rerank"):
+        raise RecallError(f"base 는 'hybrid'|'bm25'|'rerank' 여야: {base!r}")
+
+    norm_q = normalize_query(query, client=client)
+
+    if base == "hybrid":
+        return recall_hybrid(store, norm_q, limit=limit, project_root=project_root)
+    if base == "bm25":
+        return recall(store, norm_q, limit=limit, project_root=project_root)
+    return recall_reranked(
+        store, norm_q, limit=limit,
+        candidate_pool=limit * 4, base="hybrid",
+        project_root=project_root,
+    )
