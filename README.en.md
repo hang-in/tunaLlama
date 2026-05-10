@@ -63,6 +63,12 @@ def kiwi_morphemes(text):
 
 `tuna_recall(query, limit)` returns ranked summaries, never the full original output. The whole point is to keep recall results small.
 
+### Phase 2 — semantic + hybrid + graph
+
+- **Vector recall** (`memory/vector.py`): `BAAI/bge-m3` 1024-dim embeddings auto-saved on `record_call`. Lazy load + thread-locked. `MemoryStore.search_vectors(query)` does brute-force cosine over `embedding IS NOT NULL` rows; falls back to empty list if the model is unavailable so the BM25 path is unaffected.
+- **Hybrid recall** (`recall_hybrid`): RRF (k=60) over BM25 + vector. `score = 1/(k+rank)` summed across both rankings, dedup by record id, BM25 snippet preferred over vector for display. Works on the BM25-only side when no embeddings exist.
+- **Rule-based graph** (`memory/graph.py`): `same_project` / `same_day` / `same_tool` edges via SQL JOIN with `a.id < b.id` normalization (no self-loops, no reverse duplicates). `rebuild_edges()` + `traverse(start_id, max_hops, relations)` BFS. LLM-free.
+
 ## Provider abstraction
 
 | Provider | host default | key |

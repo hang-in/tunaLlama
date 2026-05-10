@@ -62,6 +62,47 @@ tunaLlama 자체를 tunaLlama 로 검증한 기록. Phase 2 부터의 작업 흐
 
 ---
 
+## 검색 품질 측정 — 2026-05-10
+
+`tests/integration/test_search_quality.py` (`@pytest.mark.search_quality`).
+실 BGE-M3 + 12 record 시드(한국어/영문 코딩 task 페어) + 6 query 의 precision@3.
+
+```
+query                     BM25    vector    hybrid
+--------------------------------------------------
+이메일 검증                    1.00      0.67      0.67
+validate email            1.00      0.67      0.67
+JSON 파싱                   1.00      0.67      0.67
+memory leak               1.00      0.67      0.67
+비밀번호 해시                   1.00      0.67      0.67
+decorator pattern         1.00      0.67      0.67
+--------------------------------------------------
+AVG                       1.00      0.67      0.67
+```
+
+### 해석
+
+- **BM25 P@3 = 1.00**: Kiwi 형태소 색인이 한국어 query 도 깨끗이 잡음. 영문은
+  unicode61 그대로. 시드가 명확한 키워드 매칭이라 keyword-based 가 완벽.
+- **vector P@3 = 0.67**: cross-lingual 페어는 잡지만 의미적 유사성으로 다른
+  task 도 함께 끌어옴 (precision 희석).
+- **hybrid = vector 동일**: BM25 가 100% 인 시나리오에서는 RRF 가 vector 의
+  noise 만 추가 → BM25 만 못함. 자연.
+
+### Cross-lingual 검증 (vector 의 진짜 가치)
+
+`test_korean_query_finds_english_pair_via_vector` 통과 — `이메일 검증` 으로 검색
+시 영문 `validate email address` (id=2) 가 top-3 에 등장.
+`test_english_query_finds_korean_pair_via_vector` 통과 — `memory leak` 으로
+검색 시 `메모리 누수 탐지` (id=5) 가 top-3 에 등장.
+
+### 결론
+
+- 일상 한국어/영문 메모리 검색은 **BM25(Kiwi) 만으로 충분**.
+- **벡터의 가치는 cross-lingual / paraphrase / 동의어** — 시드 차원에서는
+  추가 측정 필요.
+- **hybrid 의 우위** 는 BM25 가 약한 시나리오에서 측정해야 — Phase 3 후보.
+
 ## Phase 2 종합 — Round 7-9 결론
 
 3 라운드 모두 같은 패턴:
