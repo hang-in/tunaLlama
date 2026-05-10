@@ -48,11 +48,15 @@ from .errors import (
 from .llm import ChatResponse, LLMClient, make_client
 from .memory import (
     CallRecord,
+    Edge,
     MemoryStore,
     RecallResult,
     RecallSnippet,
     VectorHit,
+    rebuild_edges,
     recall,
+    recall_hybrid,
+    traverse,
 )
 from .routing import recall_for_delegation
 from .workflow import (
@@ -93,11 +97,15 @@ __all__ = [
     "make_client",
     # memory
     "CallRecord",
+    "Edge",
     "MemoryStore",
     "RecallResult",
     "RecallSnippet",
     "VectorHit",
+    "rebuild_edges",
     "recall",
+    "recall_hybrid",
+    "traverse",
     # routing
     "recall_for_delegation",
     # delegation

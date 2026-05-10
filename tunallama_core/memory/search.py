@@ -124,3 +124,54 @@ def _to_snippet(row: sqlite3.Row) -> RecallSnippet:
 
 def _truncate(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
+
+
+def recall_hybrid(
+    store: MemoryStore,
+    query: str,
+    *,
+    limit: int = 5,
+    project_root: str | None = None,
+    k: int = 60,
+) -> RecallResult:
+    """BM25(:func:`recall`) + 벡터(:meth:`MemoryStore.search_vectors`) RRF 병합.
+
+    각 결과 list 의 1-based rank 로 ``score = 1/(k+rank)`` 를 부여하고,
+    같은 record id 가 양쪽에 잡히면 score 를 합산. 합산 score 내림차순으로
+    상위 ``limit`` 개를 ``RecallResult.snippets`` 로 반환.
+
+    벡터 결과가 비어있어도(임베딩 모델 미가용 등) BM25 결과만으로 정상 동작.
+    """
+    if limit <= 0:
+        raise RecallError(f"limit 는 양수여야 합니다: {limit}")
+
+    expanded = limit * 2
+    bm25 = recall(store, query, limit=expanded, project_root=project_root)
+    vec_hits = store.search_vectors(
+        query, limit=expanded, project_root=project_root
+    )
+
+    # rank 합산 점수 — id → 누적 점수
+    scores: dict[int, float] = {}
+    # snippet 본문은 BM25 의 RecallSnippet 우선, 없으면 VectorHit 변환.
+    snippet_map: dict[int, RecallSnippet] = {}
+
+    for rank, s in enumerate(bm25.snippets, start=1):
+        scores[s.full_id] = scores.get(s.full_id, 0.0) + 1.0 / (k + rank)
+        snippet_map[s.full_id] = s
+
+    for rank, h in enumerate(vec_hits, start=1):
+        scores[h.id] = scores.get(h.id, 0.0) + 1.0 / (k + rank)
+        if h.id not in snippet_map:
+            snippet_map[h.id] = RecallSnippet(
+                full_id=h.id,
+                timestamp=h.timestamp,
+                tool_name=h.tool_name,
+                inputs_summary=h.inputs_summary,
+                output_excerpt=h.output_excerpt,
+                score=h.score,
+            )
+
+    ranked_ids = sorted(scores.keys(), key=lambda i: scores[i], reverse=True)
+    top = tuple(snippet_map[i] for i in ranked_ids[:limit])
+    return RecallResult(query=query, total_matches=len(scores), snippets=top)

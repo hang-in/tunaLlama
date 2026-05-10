@@ -29,3 +29,14 @@ CREATE VIRTUAL TABLE IF NOT EXISTS calls_fts USING fts5(
     output_text,
     tokenize='unicode61 remove_diacritics 2'
 );
+
+-- Phase 2-3: rule-based 그래프 엣지. ``source_id < target_id`` 로 정규화.
+CREATE TABLE IF NOT EXISTS graph_edges (
+    source_id INTEGER NOT NULL,
+    target_id INTEGER NOT NULL,
+    relation TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (source_id, target_id, relation)
+);
+CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_id);
+CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_id);

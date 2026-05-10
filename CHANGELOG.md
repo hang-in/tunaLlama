@@ -3,13 +3,36 @@
 본 문서는 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/) 형식을 따른다.
 버전 번호는 [Semantic Versioning](https://semver.org/lang/ko/)을 따른다.
 
-## [Unreleased]
+## [Unreleased] — 0.2.0 (Phase 2 완료, 릴리즈 대기)
 
-### 진행 중 (Phase 2)
-- 벡터 임베딩 + HNSW 시맨틱 검색
-- RRF (Reciprocal Rank Fusion) 로 BM25 + 벡터 병합
-- Rule-based 그래프 엣지 (`same_project`, `same_day`)
-- Phase 2 작업은 dogfooding 흐름으로 진행 — spec → `tuna_dev_review_from_spec`
+### Phase 2 — semantic memory + graph
+- **벡터 임베딩** (`tunallama_core/memory/vector.py`): `BAAI/bge-m3` 1024-dim,
+  lazy load + threading.Lock, `normalize_embeddings=True` (모델 native L2),
+  blob 길이 corruption 가드. `VectorHit` dataclass.
+- **schema migration**: `calls.embedding BLOB` 컬럼 + 옛 db 의 `ALTER TABLE
+  ADD COLUMN` idempotent 처리 (`MemoryStore._migrate_embedding_column`).
+- **`MemoryStore.search_vectors`**: cosine 유사도 brute-force (numpy dot).
+  `embedding IS NOT NULL` 인 행만, `project_root` 필터, NULL/corrupt 자동 skip.
+  임베딩 파이프라인 실패 시 빈 리스트 (BM25 fallback 은 호출자 몫).
+- **`recall_hybrid`** (`tunallama_core/memory/search.py`): BM25 + 벡터 RRF 병합
+  (k=60). `expanded_limit = limit*2` 후보 풀 → 1/(k+rank) 합산 → dedup. 벡터
+  결과 비어도 BM25 만으로 정상 동작. 기존 `recall()` signature 변경 없음.
+- **Rule-based graph edges** (`tunallama_core/memory/graph.py`):
+  `same_project` / `same_day` / `same_tool` 3 종 엣지. SQL JOIN 으로 O(N²)
+  처리 (Python 메모리 회피). `a.id < b.id` 정규화 + self-loop 차단. `Edge`
+  dataclass + `rebuild_edges()` + `traverse(start_id, max_hops, relations)`
+  Python BFS.
+- **schema 추가**: `graph_edges` 테이블 + 양쪽 인덱스.
+
+### Phase 2 작업 흐름
+- 3 spec (vector / RRF / graph) 으로 `tuna_dev_review_from_spec` 위임 (model
+  = `glm-4.7`). Architect 가 결과 차용 + 직접 통합. 자세한 라운드별 결과 +
+  차용/직접작성 분리는 `docs/dogfooding-log.md` round 7-9 + 종합 섹션.
+- 312 tests, 91% coverage. 28 new tests (vector 11 + hybrid 7 + graph 10).
+- Public API 추가: `VectorHit`, `Edge`, `recall_hybrid`, `rebuild_edges`,
+  `traverse`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`.
+
+## [0.1.0] — 2026-05-10
 
 ## [0.1.0] — 2026-05-10
 

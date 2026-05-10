@@ -5,7 +5,8 @@
 - ``tokenize``: write 시점 한국어 형태소 사전 토큰화.
 """
 
-from .search import RecallResult, RecallSnippet, recall
+from .graph import Edge, rebuild_edges, traverse
+from .search import RecallResult, RecallSnippet, recall, recall_hybrid
 from .store import CallRecord, MemoryStore
 from .tokenize import has_korean, kiwi_morphemes, tokenize_for_index
 from .vector import EMBEDDING_DIM, EMBEDDING_MODEL, VectorHit
@@ -14,12 +15,16 @@ __all__ = [
     "CallRecord",
     "EMBEDDING_DIM",
     "EMBEDDING_MODEL",
+    "Edge",
     "MemoryStore",
     "RecallResult",
     "RecallSnippet",
     "VectorHit",
     "has_korean",
     "kiwi_morphemes",
+    "rebuild_edges",
     "recall",
+    "recall_hybrid",
     "tokenize_for_index",
+    "traverse",
 ]

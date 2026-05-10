@@ -62,6 +62,55 @@ tunaLlama 자체를 tunaLlama 로 검증한 기록. Phase 2 부터의 작업 흐
 
 ---
 
+## Phase 2 종합 — Round 7-9 결론
+
+3 라운드 모두 같은 패턴:
+- ✓ 알고리즘 핵심은 모델이 합리적으로 작성 (RRF 점수 합산, JOIN 으로 O(N²)
+  Python 회피, threading.Lock, blob 길이 검증 등 — round 7 의 좋은 발견을
+  round 8/9 에 limitations.md 가 prepend 해 효과 누적).
+- ✗ 우리 코드베이스 통합 부분(정확한 import 경로, RecallSnippet vs VectorHit
+  타입 통합, schema migration, `MemoryStore.conn` API) 은 모델이 무시. 매번
+  standalone prototype 으로 반환.
+- ✗ Acceptance 의 pytest N 케이스 작성 0건 — 3 라운드 모두.
+
+→ **dogfooding 의 가치는 "코드 그대로 통합" 이 아니라 "알고리즘 / 디테일 차용"**.
+이번 작업 흐름 (Architect 가 결과 차용 + 우리 구조에 맞춰 직접 통합 + 테스트
+직접 작성) 이 가장 효율적이었다. spec 단위 분할(3개) 도 검증된 선택 — 한
+spec 이 한 번에 다 잡히지 않더라도 차용할 부분만 명확.
+
+차용 내역:
+- Round 7 → Phase 2-1: lazy load + threading.Lock, `normalize_embeddings=True`,
+  blob 길이 검증.
+- Round 8 → Phase 2-2: RRF 점수 합산 패턴 (`scores[id] += 1/(k+rank)`),
+  `expanded_limit = limit * 2` 확장 풀.
+- Round 9 → Phase 2-3: SQL JOIN 으로 O(N²) 처리 (Python 메모리 회피),
+  `a.id < b.id` 정규화.
+
+직접 작성:
+- 정확한 모듈 분리 (vector.py, graph.py 별도)
+- 우리 MemoryStore 인터페이스 / 시그너처 일치
+- schema migration 코드 (ALTER TABLE 의 idempotent 처리)
+- pytest 케이스 (각 spec 의 Acceptance 충족)
+
+## Round 9 — 2026-05-10 · Phase 2-3 (graph_edges) · glm-4.7
+
+- spec: 6+ pytest 케이스, rule edges (same_project / same_day / same_tool),
+  BFS traverse, schema migration.
+- 결과: 알고리즘 정확 (SQL JOIN + 재귀 CTE), Edge dataclass 정확.
+- 못한 부분: pytest 케이스 0개, schema migration 누락, `MemoryStore.conn` 대신
+  `Store.execute(...)` Protocol 가정.
+- Architect 통합: SQL JOIN 패턴 그대로, 재귀 CTE → Python BFS 로 단순화 (cycle
+  처리 명확), schema 추가 + idempotent migration.
+
+## Round 8 — 2026-05-10 · Phase 2-2 (hybrid_rrf) · glm-4.7
+
+- spec: 5+ pytest, RRF k=60, dedup, vector 미존재 시 BM25 fallback.
+- 결과: ✓ `recall()` signature 보존 (limitations 효과), ✓ RRF 알고리즘 정확.
+  ✗ `RecallSnippet.full_id` vs `VectorHit.id` 타입 불일치, ✗ `from .types import
+  RecallResult` 같이 우리 모듈 구조 무시, ✗ 테스트 0개.
+- Architect 통합: RRF 알고리즘 그대로, snippet_map 으로 BM25/벡터 dedup,
+  VectorHit → RecallSnippet 변환 추가.
+
 ## Round 7 — 2026-05-10 · Phase 2-1 (vector_recall) · glm-4.7
 
 - **변경사항**: model = `glm-4.7` (config.toml). spec
