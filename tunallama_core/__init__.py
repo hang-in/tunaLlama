@@ -53,6 +53,18 @@ from .memory import (
     recall,
 )
 from .routing import recall_for_delegation
+from .workflow import (
+    DevReviewResult,
+    IterationResult,
+    TaskSpec,
+    dev_review_from_spec,
+    dev_review_loop,
+    load_limitations,
+    log_limitation,
+    parse_spec,
+    parse_spec_file,
+    with_limitations,
+)
 
 __all__ = [
     # config
@@ -96,4 +108,15 @@ __all__ = [
     "review_code",
     "review_file",
     "write_tests",
+    # workflow
+    "DevReviewResult",
+    "IterationResult",
+    "TaskSpec",
+    "dev_review_from_spec",
+    "dev_review_loop",
+    "load_limitations",
+    "log_limitation",
+    "parse_spec",
+    "parse_spec_file",
+    "with_limitations",
 ]

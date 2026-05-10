@@ -60,7 +60,6 @@ markers = [
 branch = true
 omit = [
     "tests/*",
-    "plugin/hooks/*",
 ]
 
 [tool.coverage.report]

@@ -100,7 +100,7 @@ def _ollama_cloud_block() -> tuple[str, str, dict]:
     env_name = _ask("API 키 환경변수 이름", "OLLAMA_CLOUD_API_KEY")
     if not os.environ.get(env_name):
         print(f"  [!] 환경변수 {env_name} 가 비어있습니다 — 나중에 .env 에 추가하세요.")
-    model = _ask("모델 (cloud catalog)", "devstral-small-2:24b")
+    model = _ask("모델 (cloud catalog)", "gemma4:31b")
     return host, model, {"api_key_env": env_name}
 
 

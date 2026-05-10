@@ -19,7 +19,7 @@ from tunallama_core.config.models import OllamaCloudProviderConfig
 from tunallama_core.llm.base import ChatResponse, LLMClient
 
 OLLAMA_CLOUD_HOST = "https://ollama.com"
-OLLAMA_CLOUD_MODEL = "devstral-small-2:24b"
+OLLAMA_CLOUD_MODEL = "gemma4:31b"
 OLLAMA_CLOUD_API_KEY_ENV = "OLLAMA_CLOUD_API_KEY"
 
 LMSTUDIO_HOST = "http://localhost:1234/v1"

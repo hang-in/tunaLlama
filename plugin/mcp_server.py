@@ -15,11 +15,14 @@ from mcp.server.fastmcp import FastMCP
 
 from tunallama_core import (
     analyze_files as core_analyze_files,
+    dev_review_from_spec as core_dev_review_from_spec,
+    dev_review_loop as core_dev_review_loop,
     explain_code as core_explain_code,
     explain_file as core_explain_file,
     fix_code as core_fix_code,
     general_task as core_general_task,
     generate_code as core_generate_code,
+    log_limitation as core_log_limitation,
     recall as core_recall,
     refactor_code as core_refactor_code,
     review_code as core_review_code,
@@ -162,6 +165,52 @@ def tuna_analyze_files(file_paths: list[str], question: str) -> str:
         project_root=_project_root(),
     )
     return r.text
+
+
+@mcp.tool()
+def tuna_dev_review(
+    requirements: str, language: str = "", max_iterations: int = 2
+) -> str:
+    """Run a generate→review→fix→review loop on the local LLM and return the
+    final code plus the per-iteration review log. Use this when you want the
+    local model to self-correct before handing the result to you for final review.
+    Known limitations from `~/.tunallama/limitations.md` are auto-prepended."""
+    cfg, client, store = _state._ensure()
+    r = core_dev_review_loop(
+        requirements,
+        language=language or None,
+        client=client,
+        store=store,
+        project_root=_project_root(),
+        max_iterations=max_iterations,
+    )
+    return r.summary()
+
+
+@mcp.tool()
+def tuna_dev_review_from_spec(spec_path: str, max_iterations: int = 2) -> str:
+    """Read a markdown task spec from `spec_path` and run the dev_review loop.
+    Spec headers (optional): `# Task: ...`, `## Requirements`, `## Constraints`,
+    `## Acceptance`. Use this for non-trivial work where you've written the
+    requirements down as a doc that the subagent should follow."""
+    cfg, client, store = _state._ensure()
+    r = core_dev_review_from_spec(
+        spec_path,
+        client=client,
+        store=store,
+        project_root=_project_root(),
+        max_iterations=max_iterations,
+    )
+    return r.summary()
+
+
+@mcp.tool()
+def tuna_log_limitation(description: str) -> str:
+    """Record a newly observed weakness of the local LLM. Future dev_review
+    calls will include this note in their prompt so the model avoids the
+    same mistake. Stored in ~/.tunallama/limitations.md."""
+    p = core_log_limitation(description)
+    return f"[OK] limitation 기록 완료: {p}"
 
 
 @mcp.tool()

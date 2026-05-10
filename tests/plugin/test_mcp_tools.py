@@ -103,3 +103,38 @@ def test_default_empty_string_args_become_none(fake_state):
     sent = fake_state["client"].calls[-1]
     # Language 라벨이 prompt 에 포함되지 않으면 language=None 으로 전달된 것.
     assert "Language:" not in sent["prompt"]
+
+
+def test_tuna_dev_review_runs_loop(fake_state):
+    fake_state["client"].text = "ok 이상 없음"
+    out = mcp_server.tuna_dev_review("write x", "python", 1)
+    assert "dev_review" in out
+    assert "수렴" in out
+    # generate + review 두 번 호출
+    assert len(fake_state["client"].calls) == 2
+
+
+def test_tuna_dev_review_from_spec_reads_file(fake_state, tmp_path):
+    spec = tmp_path / "spec.md"
+    spec.write_text(
+        "# Task: parse json\n## Requirements\n- handle nesting\n",
+        encoding="utf-8",
+    )
+    fake_state["client"].text = "ok 이상 없음"
+    out = mcp_server.tuna_dev_review_from_spec(str(spec), 1)
+    assert "수렴" in out
+    # 첫 호출 prompt 에 spec 내용 포함
+    first_prompt = fake_state["client"].calls[0]["prompt"]
+    assert "parse json" in first_prompt
+    assert "handle nesting" in first_prompt
+
+
+def test_tuna_log_limitation_creates_file(fake_state, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "tunallama_core.workflow.limitations.DEFAULT_LIMITATIONS_PATH",
+        tmp_path / "lim.md",
+    )
+    out = mcp_server.tuna_log_limitation("한국어 들여쓰기 잘못함")
+    assert "[OK]" in out
+    body = (tmp_path / "lim.md").read_text(encoding="utf-8")
+    assert "한국어 들여쓰기 잘못함" in body
