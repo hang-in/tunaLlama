@@ -1,0 +1,33 @@
+# mise — runtime/tool manager.
+# 설치: https://mise.jdx.dev/getting-started.html
+# 디렉토리 진입 시 .venv가 없으면 자동 생성 + 활성화.
+
+[tools]
+python = "3.11"
+uv = "latest"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+# venv 안에서 패키지를 찾도록 보장
+PYTHONDONTWRITEBYTECODE = "1"
+
+[tasks.install]
+description = "개발 의존성 설치 (editable + dev extras)"
+run = "uv pip install -e '.[dev]'"
+
+[tasks.test]
+description = "pytest 실행"
+run = "pytest"
+
+[tasks.lint]
+description = "ruff 린트"
+run = "ruff check ."
+
+[tasks.format]
+description = "ruff 포맷"
+run = "ruff format ."
+
+[tasks.mcp]
+description = "플러그인 MCP 서버 직접 실행 (디버그용)"
+run = "python -m plugin.mcp_server"

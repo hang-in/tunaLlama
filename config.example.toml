@@ -1,0 +1,43 @@
+# tunaLlama 설정 예시 — `~/.tunallama/config.toml` 또는 프로젝트 로컬 `.tunallama/config.toml` 로 복사 후 수정.
+
+[llm]
+# provider: ollama | ollama_cloud | lmstudio
+provider = "ollama"
+# 공통 파라미터
+temperature = 0.3
+timeout_seconds = 300
+
+[llm.ollama]
+# 로컬 Ollama 데몬
+host = "http://localhost:11434"
+model = "qwen2.5:32b"
+num_ctx = 8192
+
+[llm.ollama_cloud]
+# Ollama Cloud (https://ollama.com). API 키는 환경변수로만 받음.
+host = "https://ollama.com"
+api_key_env = "OLLAMA_API_KEY"
+model = "qwen2.5-coder:32b"
+
+[llm.lmstudio]
+# LM Studio는 OpenAI 호환 엔드포인트 제공. 기본 1234 포트.
+host = "http://localhost:1234/v1"
+model = "qwen2.5-coder-32b-instruct"
+# LM Studio 로컬 모드는 키가 무의미하지만 일부 클라이언트가 헤더를 요구함.
+api_key = "lm-studio"
+
+[memory]
+db_path = "~/.tunallama/memory.db"
+# kiwi(권장) | konlpy_okt | none
+korean_tokenizer = "kiwi"
+enable_logging = true
+enable_recall = true
+
+[routing]
+# always | on_request | never
+auto_recall = "on_request"
+recall_limit = 5
+
+[logging]
+level = "INFO"
+file = "~/.tunallama/tunallama.log"
