@@ -6,6 +6,7 @@
 """
 
 from .graph import Edge, rebuild_edges, traverse
+from .metrics import RetrievalMetrics, average_metrics, compute_metrics
 from .query_expansion import expand_query
 from .reranker import RERANKER_MODEL, rerank
 from .search import (
@@ -29,7 +30,10 @@ __all__ = [
     "MemoryStore",
     "RecallResult",
     "RecallSnippet",
+    "RetrievalMetrics",
     "VectorHit",
+    "average_metrics",
+    "compute_metrics",
     "build_semantic_edges",
     "classify_pair",
     "RERANKER_MODEL",
