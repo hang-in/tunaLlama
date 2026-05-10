@@ -33,14 +33,35 @@ AVG                       0.88    0.25    0.80    0.67    0.80    0.67
 
 ### Phase 2 + 3 검색 품질 종합
 
-| 시나리오 | BM25 | vector | hybrid |
-|---|---|---|---|
-| 키워드 일치 (Phase 2) | P=1.00 ✓ | P=0.67 | = vector |
-| paraphrase (Phase 3-1) | R=0.25 △ | R=0.67 ✓ | = vector |
+| 시나리오 | BM25 | vector | hybrid | expanded BM25 |
+|---|---|---|---|---|
+| 키워드 일치 (Phase 2) | P=1.00 ✓ | P=0.67 | = vector | - |
+| paraphrase (Phase 3-1) | R=0.25 | R=0.67 ✓ | = vector | **R=0.50** (2x BM25) |
 
 **의사결정**: 일상 메모리 검색은 BM25(Kiwi) 만으로 충분. 다양한 표현으로 같은
-task 검색 시 vector / hybrid. 둘 다 backend 에 살아있고 사용자가 호출 시점에
-선택.
+task 검색 시 vector / hybrid 또는 LLM-augmented `recall_expanded`. 모두
+backend 에 살아있고 사용자가 호출 시점에 선택.
+
+### Query expansion 측정 디테일 (Phase 3.5)
+
+```
+group                     BM25     vec    hyb   exp+B   exp+H
+--------------------------------------------------------------
+memory_leak               0.17    0.50    0.50    0.17    0.50
+email_validation          0.17    0.67    0.67    0.17    0.67
+file_compression          0.17    0.83    0.83    0.50    0.83
+json_parsing              0.67    0.67    0.67    0.67    0.67
+password_hashing          0.17    0.67    0.67    0.83    0.67
+rate_limit                0.17    0.67    0.67    0.67    0.67
+--------------------------------------------------------------
+AVG                       0.25    0.67    0.67    0.50    0.67
+```
+
+- query 별 편차 큼 - memory_leak / email_validation 은 expansion 효과 X,
+  password_hashing 은 0.17 -> 0.83 까지.
+- 실 cloud LLM (glm-4.7) 호출 - 측정 12 회 (6 query × 2 mode) 에 ~12 분.
+- 호출당 ~1초가 아니라 평균 60-110 초 - cloud 응답 지연 큼. 실 사용에서는
+  비용/지연 trade-off 고려해 `mode="bm25"` (paraphrase 약점 공략) 만 권장.
 
 ## Round 11 — 2026-05-10 · Phase 3-2 (semantic_edges) · glm-4.7
 

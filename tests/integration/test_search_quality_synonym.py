@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import pytest
 
-from tunallama_core.memory.search import recall, recall_hybrid
+from tunallama_core.config.models import OllamaCloudProviderConfig
+from tunallama_core.llm.ollama import from_cloud
+from tunallama_core.memory.search import recall, recall_expanded, recall_hybrid
 from tunallama_core.memory.store import MemoryStore
 
 pytestmark = pytest.mark.search_quality
@@ -122,6 +124,78 @@ def _precision_recall(retrieved_ids: list[int], relevant: set[int], k: int = 5) 
 
 def test_synonym_seed_loaded(synonym_store):
     assert synonym_store.count() == sum(len(p) for _, p in _GROUPS)
+
+
+@pytest.fixture(scope="module")
+def cloud_client():
+    """LLM expansion 측정용 — Ollama Cloud (config.toml 의 model 그대로)."""
+    import os
+
+    if not os.environ.get("OLLAMA_CLOUD_API_KEY"):
+        pytest.skip("OLLAMA_CLOUD_API_KEY 미설정 — expansion 측정 skip")
+    cfg = OllamaCloudProviderConfig(
+        host="https://ollama.com",
+        api_key_env="OLLAMA_CLOUD_API_KEY",
+        model="glm-4.7",
+    )
+    return from_cloud(cfg, temperature=0.3, timeout=60)
+
+
+def test_recall_expanded_quality_vs_bm25_hybrid(synonym_store, cloud_client, capsys):
+    """LLM query expansion 효과 측정 — recall@5 비교."""
+    bm25_r = vec_r = hyb_r = exp_b_r = exp_h_r = 0.0
+    rows: list[tuple[str, float, float, float, float, float]] = []
+
+    for idx, (label, phrases) in enumerate(_GROUPS):
+        query = phrases[0]
+        relevant = _relevant_set(idx)
+
+        bm = [s.full_id for s in recall(synonym_store, query, limit=10).snippets]
+        vec = [h.id for h in synonym_store.search_vectors(query, limit=10)]
+        hy = [
+            s.full_id
+            for s in recall_hybrid(synonym_store, query, limit=10).snippets
+        ]
+        ex_b = [
+            s.full_id
+            for s in recall_expanded(
+                synonym_store, query, client=cloud_client, mode="bm25", limit=10
+            ).snippets
+        ]
+        ex_h = [
+            s.full_id
+            for s in recall_expanded(
+                synonym_store, query, client=cloud_client, mode="hybrid", limit=10
+            ).snippets
+        ]
+
+        _, br = _precision_recall(bm, relevant)
+        _, vr = _precision_recall(vec, relevant)
+        _, hr = _precision_recall(hy, relevant)
+        _, eb = _precision_recall(ex_b, relevant)
+        _, eh = _precision_recall(ex_h, relevant)
+
+        rows.append((label, br, vr, hr, eb, eh))
+        bm25_r += br; vec_r += vr; hyb_r += hr; exp_b_r += eb; exp_h_r += eh
+
+    n = len(_GROUPS)
+    avg = (bm25_r / n, vec_r / n, hyb_r / n, exp_b_r / n, exp_h_r / n)
+
+    with capsys.disabled():
+        print("\n\n=== Query expansion (R@5) ===")
+        print(f"{'group':<22}{'BM25':>8}{'vec':>8}{'hyb':>8}{'exp+B':>8}{'exp+H':>8}")
+        print("-" * 62)
+        for label, br, vr, hr, eb, eh in rows:
+            print(f"{label[:20]:<22}{br:>8.2f}{vr:>8.2f}{hr:>8.2f}{eb:>8.2f}{eh:>8.2f}")
+        print("-" * 62)
+        print(f"{'AVG':<22}{avg[0]:>8.2f}{avg[1]:>8.2f}{avg[2]:>8.2f}{avg[3]:>8.2f}{avg[4]:>8.2f}")
+        print()
+
+    # 가설: expanded BM25 > BM25 단독 (paraphrase 가 BM25 약점이라 가장 큰 향상 기대).
+    assert avg[3] >= avg[0], (
+        f"expanded BM25 R@5 ({avg[3]:.2f}) >= BM25 R@5 ({avg[0]:.2f}) 기대 — "
+        f"expansion 이 BM25 의 paraphrase 약점을 공략 못함"
+    )
 
 
 def test_search_quality_synonym_comparison(synonym_store, capsys):

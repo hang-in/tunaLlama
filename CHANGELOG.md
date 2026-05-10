@@ -19,6 +19,16 @@
 - 9 단위 테스트(semantic_edges) + 2 통합 테스트(synonym recall). 329 tests,
   92% coverage.
 
+### Phase 3.5 - LLM query expansion (검색률 향상)
+- **`tunallama_core/memory/query_expansion.py`**: `expand_query(client, query,
+  max_expansions=4)` - 동의어/paraphrase 확장. LLM 응답 형식 깨짐 / 호출
+  실패 시 원 query 만으로 fallback.
+- **`recall_expanded(store, query, *, client, mode, max_expansions, k)`**:
+  확장된 각 query 로 BM25 또는 hybrid 검색 후 RRF 합산.
+- **실측**: paraphrase 시드에서 BM25 R@5 = 0.25 -> 0.50 (**2배 향상**).
+  vector 가 이미 강한 환경에서는 한계 효용 X.
+- 11 단위 테스트 (expand_query 6 + recall_expanded 5).
+
 ### dogfooding 11 라운드 누적 결과 (`docs/dogfooding-log.md`)
 - 모델은 형식(pytest, dataclass) 은 따르지만 우리 코드베이스 통합은 거의 무시.
   매 라운드 standalone prototype 으로 응답.

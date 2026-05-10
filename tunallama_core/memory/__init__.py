@@ -6,8 +6,15 @@
 """
 
 from .graph import Edge, rebuild_edges, traverse
+from .query_expansion import expand_query
+from .search import (
+    RecallResult,
+    RecallSnippet,
+    recall,
+    recall_expanded,
+    recall_hybrid,
+)
 from .semantic_edges import build_semantic_edges, classify_pair
-from .search import RecallResult, RecallSnippet, recall, recall_hybrid
 from .store import CallRecord, MemoryStore
 from .tokenize import has_korean, kiwi_morphemes, tokenize_for_index
 from .vector import EMBEDDING_DIM, EMBEDDING_MODEL, VectorHit
@@ -18,15 +25,17 @@ __all__ = [
     "EMBEDDING_MODEL",
     "Edge",
     "MemoryStore",
-    "build_semantic_edges",
-    "classify_pair",
     "RecallResult",
     "RecallSnippet",
     "VectorHit",
+    "build_semantic_edges",
+    "classify_pair",
+    "expand_query",
     "has_korean",
     "kiwi_morphemes",
     "rebuild_edges",
     "recall",
+    "recall_expanded",
     "recall_hybrid",
     "tokenize_for_index",
     "traverse",

@@ -126,6 +126,54 @@ def _truncate(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
+def recall_expanded(
+    store: MemoryStore,
+    query: str,
+    *,
+    client,  # LLMClient — 순환 import 회피 위해 untyped
+    limit: int = 5,
+    project_root: str | None = None,
+    max_expansions: int = 4,
+    mode: str = "hybrid",
+    k: int = 60,
+) -> RecallResult:
+    """LLM query expansion + 각 확장 query 로 검색 → RRF 합산.
+
+    ``mode``:
+    - ``"bm25"``: BM25 (`recall`) 만 — paraphrase 약점 직접 공략.
+    - ``"hybrid"`` (기본): `recall_hybrid` — BM25 + 벡터 + expansion.
+
+    LLM 호출 1 회 (expansion 생성). 검색은 expansion 개수만큼 순차.
+    """
+    if limit <= 0:
+        raise RecallError(f"limit 는 양수여야 합니다: {limit}")
+    if mode not in ("bm25", "hybrid"):
+        raise RecallError(f"mode 는 'bm25' 또는 'hybrid' 여야: {mode!r}")
+
+    from .query_expansion import expand_query
+
+    queries = expand_query(client, query, max_expansions=max_expansions)
+    expanded_limit = limit * 2
+
+    scores: dict[int, float] = {}
+    snippet_map: dict[int, RecallSnippet] = {}
+    for q in queries:
+        if mode == "bm25":
+            res = recall(store, q, limit=expanded_limit, project_root=project_root)
+        else:  # hybrid
+            res = recall_hybrid(
+                store, q, limit=expanded_limit, project_root=project_root
+            )
+        for rank, s in enumerate(res.snippets, start=1):
+            scores[s.full_id] = scores.get(s.full_id, 0.0) + 1.0 / (k + rank)
+            if s.full_id not in snippet_map:
+                snippet_map[s.full_id] = s
+
+    ranked_ids = sorted(scores.keys(), key=lambda i: scores[i], reverse=True)
+    top = tuple(snippet_map[i] for i in ranked_ids[:limit])
+    return RecallResult(query=query, total_matches=len(scores), snippets=top)
+
+
 def recall_hybrid(
     store: MemoryStore,
     query: str,
