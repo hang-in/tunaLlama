@@ -126,19 +126,36 @@ def embed(text: str) -> np.ndarray:
 
 ### 4.3. 검색 품질 (실측, 2026-05-10)
 
-12-record 한국어/영문 코딩 task 시드 + 6 query 의 P@3:
+두 시드로 정량 측정:
 
-| 경로 | P@3 (평균) | 비고 |
-|---|---:|---|
-| BM25 (Kiwi) | **1.00** | 키워드 일치 시드에서 완벽 |
-| vector (BGE-M3) | 0.67 | cross-lingual 페어 잡음 + 의미적 noise |
-| hybrid (RRF, k=60) | 0.67 | vector 와 동일 — BM25 가 이미 100% 라 합성 이득 X |
+**Phase 2 — 키워드 일치 시드** (12 record, P@3):
 
-**해석**: 일상 메모리 검색은 BM25 만으로 충분. 벡터의 진짜 가치는
-**cross-lingual** (`이메일 검증` → 영문 `validate email`) — 별도 통합 테스트로
-검증됨. RRF 의 우위는 BM25 가 약한 동의어/paraphrase 시드에서 측정해야 (Phase 3 후보).
+| 경로 | P@3 평균 |
+|---|---:|
+| BM25 (Kiwi) | **1.00** |
+| vector (BGE-M3) | 0.67 |
+| hybrid (RRF) | 0.67 |
 
-자세한 내역: `tests/integration/test_search_quality.py`, `docs/dogfooding-log.md`.
+**Phase 3 — paraphrase 시드** (36 record, R@5):
+
+| 경로 | R@5 평균 |
+|---|---:|
+| BM25 | 0.25 |
+| vector | **0.67** |
+| hybrid (RRF) | 0.67 |
+
+**해석**:
+- BM25 는 키워드 일치 시드에서 완벽, paraphrase 시드에서 R=0.25 (놓침 많음).
+- vector 는 paraphrase 에서 R **2.7배 우세** — 의미 매칭의 정량 가치.
+- hybrid 는 두 환경 모두 vector 와 동일 — RRF 의 "더 좋아짐" 은 안 보였지만
+  "보수적 안정" 가치 (양쪽 환경 모두에서 안 떨어짐).
+
+**의사결정**: 일상 메모리 검색은 BM25(Kiwi) 만으로 충분. 다양한 표현으로 같은
+task 를 검색하는 시나리오에서는 `MemoryStore.search_vectors` 또는
+`recall_hybrid`. 두 path 모두 backend 에 살아있음.
+
+자세한 내역: `tests/integration/test_search_quality{,_synonym}.py`,
+`docs/dogfooding-log.md` 의 검색 품질 섹션.
 
 ### 4.4. 그래프 엣지 — rule-based (Phase 2)
 
@@ -147,7 +164,13 @@ call 간 관계를 LLM 호출 없이 SQL JOIN 만으로 도출:
 - `same_day`: 같은 날짜 (`timestamp[:10]`)
 - `same_tool`: 같은 `tool_name`
 
-`a.id < b.id` 로 정규화 (양방향 중복 + self-loop 차단). `rebuild_edges(store)` + `traverse(store, start_id, max_hops, relations)` (Python BFS). seCall 의 graph_repo 패턴 참고 — semantic edges (LLM 비용 큼) 는 Phase 3+ 후보.
+`a.id < b.id` 로 정규화 (양방향 중복 + self-loop 차단). `rebuild_edges(store)` + `traverse(store, start_id, max_hops, relations)` (Python BFS).
+
+### 4.5. Semantic edges — LLM 분류 (Phase 3)
+
+`build_semantic_edges(store, client, max_pairs=100, project_root=...)` 가 같은 project 안 record 페어를 LLM 으로 분류 — `RELATED` / `UNRELATED` binary single-token (Phase 1.5 stage-2 classifier 와 동일 검증된 패턴). `RELATED` 페어는 `graph_edges.relation = 'semantic_related'` 로 INSERT.
+
+비용 방어: `max_pairs` 한도, 이미 분류된 페어 skip (idempotent), `project_root` 좁힘. `rebuild_edges()` 는 rule edges 만 삭제 — semantic edges 보존.
 
 ## 5. Provider 추상화
 

@@ -9,6 +9,69 @@ tunaLlama 자체를 tunaLlama 로 검증한 기록. Phase 2 부터의 작업 흐
 
 ---
 
+## Phase 3 결과 측정 — 2026-05-10
+
+### Synonym seed (Phase 3-1) — 36 record × 6 query × P@5/R@5
+
+```
+group                   BM25 P  BM25 R   vec P   vec R   hyb P   hyb R
+----------------------------------------------------------------------
+memory_leak               1.00    0.17    0.60    0.50    0.60    0.50
+email_validation          1.00    0.17    0.80    0.67    0.80    0.67
+file_compression          1.00    0.17    1.00    0.83    1.00    0.83
+json_parsing              0.80    0.67    0.80    0.67    0.80    0.67
+password_hashing          1.00    0.17    0.80    0.67    0.80    0.67
+rate_limit                0.50    0.17    0.80    0.67    0.80    0.67
+----------------------------------------------------------------------
+AVG                       0.88    0.25    0.80    0.67    0.80    0.67
+```
+
+- ✓ **vector R@5 (0.67) >> BM25 R@5 (0.25)** — paraphrase 시드에서 의미
+  매칭 **2.7배 우세** 정량 검증.
+- BM25: P=0.88 (정확), R=0.25 (놓치는 게 많음).
+- hybrid = vector — 두 환경(키워드/paraphrase) 모두 vector 와 동일.
+
+### Phase 2 + 3 검색 품질 종합
+
+| 시나리오 | BM25 | vector | hybrid |
+|---|---|---|---|
+| 키워드 일치 (Phase 2) | P=1.00 ✓ | P=0.67 | = vector |
+| paraphrase (Phase 3-1) | R=0.25 △ | R=0.67 ✓ | = vector |
+
+**의사결정**: 일상 메모리 검색은 BM25(Kiwi) 만으로 충분. 다양한 표현으로 같은
+task 검색 시 vector / hybrid. 둘 다 backend 에 살아있고 사용자가 호출 시점에
+선택.
+
+## Round 11 — 2026-05-10 · Phase 3-2 (semantic_edges) · glm-4.7
+
+- spec: `LLMClient` + `MemoryStore.graph_edges` + `rebuild_edges` 변경 명시.
+- 결과: **OpenAI SDK 가정** (`client.chat.completions.create(...)`),
+  **MockStore 작성** — 우리 실 도구 무시. pytest 함수 6개 작성됨.
+- 정직 평가: 통합 가능 코드 X. 차용: prompt 패턴, `id_a < id_b`, max_pairs.
+- Architect 통합: 우리 `LLMClient.chat()`, `graph_edges` 테이블, `rebuild_edges`
+  rule edges 만 삭제하도록 수정 (semantic_related 보존). 9 단위 테스트.
+
+## Round 10 — 2026-05-10 · Phase 3-1 (synonym_seed) · glm-4.7
+
+- spec: 18 record + recall@5 측정. 우리 실 도구 사용 명시.
+- 결과: **MockSearchEngine 작성** — 우리 실 도구 우회.
+- 정직 평가: 측정 가치 0. 차용: 시드 36 record, precision/recall 패턴.
+- Architect 통합: 우리 `MemoryStore` + 실 BGE-M3 + 실 도구 호출.
+
+## dogfooding 11 회 누적 결론
+
+- **모델은 spec 의 형식 hint(pytest 함수, dataclass) 는 따르지만 우리
+  코드베이스 통합(정확한 import, 실 인터페이스, schema migration) 은 거의
+  매번 무시**. round 7-11 일관 패턴.
+- **dogfooding 의 가치는 "drop-in 코드" 가 아니라 "알고리즘/디테일 차용"**:
+  prompt 패턴, blob 검증, RRF 점수 합산, `normalize_embeddings`, SQL JOIN,
+  id 정규화 — 모델이 잘 발견하고 architect 가 통합.
+- **limitations.md 자동 prepend 효과 측정**:
+  - round 1→2: pytest 형식 미준수 → 카탈로그 추가 → pytest 함수 작성 ✓.
+  - round 7+: "기존 코드 보존, 단일 책임" 안내해도 standalone toy 작성 — 한계.
+- **delegation pattern 의 진짜 가치**: 코드 자동화가 아니라 **시간/토큰 절약 +
+  탐색 보조**. Architect 의 검증 + 통합 단계는 필수.
+
 ## Round 1 — 2026-05-10 · iso_datetime_parser
 
 - **모델**: `gemma4:31b` (Ollama Cloud)
@@ -61,6 +124,18 @@ tunaLlama 자체를 tunaLlama 로 검증한 기록. Phase 2 부터의 작업 흐
   를 강조해도 gemma4:31b 가 무시. 이전 review 패턴(markdown bullets)을 더 강하게 학습한 듯.
 
 ---
+
+## Round 10 — 2026-05-10 · Phase 3-1 (synonym_seed) · glm-4.7
+
+- spec: 6 task × 3 paraphrase (=18) 시드 + recall@5 측정. 우리 실 도구
+  (`recall`, `search_vectors`, `recall_hybrid`) 사용 명시.
+- 결과: **MockSearchEngine 작성** — 우리 실 도구를 우회하고 in-memory dict
+  로 검색 시뮬레이션. dev_review 2 iteration 모두 같은 패턴. round 7-9 와
+  동일 prior.
+- 정직 평가: 측정 가치 0. 차용: 시드 36 record (6 task × 6 paraphrase) —
+  spec 보다 풍부. precision/recall 계산 함수.
+- Architect 직접 통합: 우리 `MemoryStore` + 실 BGE-M3 + 실 도구 호출 +
+  assertion.
 
 ## 검색 품질 측정 — 2026-05-10
 

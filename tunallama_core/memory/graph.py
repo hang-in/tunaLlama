@@ -50,7 +50,14 @@ def rebuild_edges(store: MemoryStore) -> int:
     now = datetime.now(timezone.utc).isoformat()
     conn = store.conn
     with store._lock:  # noqa: SLF001 — 같은 lock 으로 직렬화
-        conn.execute("DELETE FROM graph_edges")
+        # rule-based edges 만 삭제 — semantic_related 등 LLM-derived 엣지는 보존.
+        # Phase 3-2 추가: build_semantic_edges 가 따로 관리.
+        rule_relations = tuple(rel for _, rel in _RELATIONS)
+        placeholders = ",".join("?" * len(rule_relations))
+        conn.execute(
+            f"DELETE FROM graph_edges WHERE relation IN ({placeholders})",
+            rule_relations,
+        )
         total = 0
         for join_cond, relation in _RELATIONS:
             cur = conn.execute(

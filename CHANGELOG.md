@@ -3,15 +3,27 @@
 본 문서는 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/) 형식을 따른다.
 버전 번호는 [Semantic Versioning](https://semver.org/lang/ko/)을 따른다.
 
-## [Unreleased] — 0.2.0 (Phase 2 통합 완료, Phase 3 진행 중)
+## [Unreleased] — 0.2.0 (Phase 2 + 3 통합 완료, 릴리즈 대기)
 
-### Phase 3 — semantic edges + synonym recall benchmark (작업 중)
-- `tests/integration/test_search_quality_synonym.py` — 동의어/paraphrase
-  시드로 BM25 가 약하고 vector/hybrid 가 우세한 시나리오 정량 측정.
-- `tunallama_core/memory/semantic_edges.py` — LLM-derived 페어 관계
-  분류 (`semantic_related` 등). rule-based edges 에 추가.
-- 작업 흐름: `docs/specs/phase3_*.md` → 차용 + Architect 통합.
-- 끝나면 v0.2.0 (Phase 2 + 3 묶어 한 번에 release).
+### Phase 3 — semantic edges + synonym recall benchmark
+- **`tests/integration/test_search_quality_synonym.py`**: 36 record (6 task
+  × 6 paraphrase) 시드 + recall@5 측정. **vector R=0.67 >> BM25 R=0.25** —
+  paraphrase 시나리오에서 벡터 의미 매칭 2.7배 우세 정량 검증.
+- **`tunallama_core/memory/semantic_edges.py`**: LLM-derived 페어 분류 —
+  binary `RELATED`/`UNRELATED` (Phase 1.5 stage-2 classifier 패턴).
+  `classify_pair`, `build_semantic_edges`. `max_pairs` 한도 + project_root
+  좁힘 + idempotent.
+- **`graph_edges.relation = 'semantic_related'`** 추가. `rebuild_edges()` 가
+  rule edges (`same_project`/`same_day`/`same_tool`) 만 삭제하도록 변경 —
+  semantic 엣지 보존.
+- 9 단위 테스트(semantic_edges) + 2 통합 테스트(synonym recall). 329 tests,
+  92% coverage.
+
+### dogfooding 11 라운드 누적 결과 (`docs/dogfooding-log.md`)
+- 모델은 형식(pytest, dataclass) 은 따르지만 우리 코드베이스 통합은 거의 무시.
+  매 라운드 standalone prototype 으로 응답.
+- delegation 의 진짜 가치 = 알고리즘/디테일 차용 + 시간/토큰 절약. Architect 의
+  검증/통합은 필수.
 
 
 ### Phase 2 — semantic memory + graph
