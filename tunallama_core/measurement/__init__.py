@@ -4,12 +4,30 @@
 """
 
 from .ast_smell import CodeSmell, analyze_ast
+from .memory_metrics import (
+    ConventionResult,
+    InterventionRecord,
+    MetricSample,
+    StateRecallProbe,
+    convention_adherence_rate,
+    standalone_toy_rate,
+    state_recall_rate,
+    user_intervention_rate,
+)
 from .token_count import TokenUsage, measure_delegated, measure_native
 
 __all__ = [
     "CodeSmell",
+    "ConventionResult",
+    "InterventionRecord",
+    "MetricSample",
+    "StateRecallProbe",
     "TokenUsage",
     "analyze_ast",
+    "convention_adherence_rate",
     "measure_delegated",
     "measure_native",
+    "standalone_toy_rate",
+    "state_recall_rate",
+    "user_intervention_rate",
 ]
