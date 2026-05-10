@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -13,11 +14,14 @@ from typing import Any
 from ..llm.base import LLMClient
 from ..memory.store import MemoryStore
 
+_logger = logging.getLogger("tunallama.delegation")
+
 
 def _maybe_extract_to_state(text: str, *, project_root: str | None) -> None:
     """Phase 6-2 - delegation 출력에서 decision/convention/constraint/antipattern
     자동 추출 → project state.md 저장. ``TUNA_AUTO_EXTRACT_STATE=0`` 이면 skip.
-    실패해도 silent (delegation 자체에 영향 없음).
+    실패는 logger.warning 으로 기록 (사용자한테 안 보이지만 dev / log 에서
+    추적 가능 - silent corruption 방지). delegation 자체에는 영향 없음.
     """
     if os.environ.get("TUNA_AUTO_EXTRACT_STATE", "1") == "0":
         return
@@ -30,8 +34,11 @@ def _maybe_extract_to_state(text: str, *, project_root: str | None) -> None:
         state = load_state(project_root)
         store_extracted_entries(state, extracted)
         save_state(state)
-    except Exception:  # noqa: BLE001
-        return
+    except Exception as exc:  # noqa: BLE001
+        _logger.warning(
+            "state.md auto-extract failed (skipped, delegation unaffected): %s",
+            exc,
+        )
 
 
 @dataclass(frozen=True)

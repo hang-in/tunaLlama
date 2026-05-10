@@ -11,6 +11,8 @@
   variance, 모델 비교, 컨텍스트 오염 saturate).
 - [phase5-hyde-kure.md](phase5-hyde-kure.md) - Phase 5 측정 (524 record
   LOPO, HyDE, KURE-v1, Adaptive routing).
+- [phase7-mcp-audit.md](phase7-mcp-audit.md) - MCP 도구 통합 + system prompt
+  size 측정 (15 → 13 tools, ~1633 tokens).
 
 ## 검색 path 우열 (524 record LOPO 기준)
 

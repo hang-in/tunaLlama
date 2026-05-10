@@ -4,6 +4,12 @@
 """
 
 from .ast_smell import CodeSmell, analyze_ast
+from .mcp_size import (
+    ToolSize,
+    format_size_table,
+    measure_tools,
+    total_estimated_tokens,
+)
 from .memory_metrics import (
     ConventionResult,
     InterventionRecord,
@@ -22,12 +28,16 @@ __all__ = [
     "InterventionRecord",
     "MetricSample",
     "StateRecallProbe",
+    "ToolSize",
     "TokenUsage",
     "analyze_ast",
     "convention_adherence_rate",
+    "format_size_table",
     "measure_delegated",
     "measure_native",
+    "measure_tools",
     "standalone_toy_rate",
     "state_recall_rate",
+    "total_estimated_tokens",
     "user_intervention_rate",
 ]

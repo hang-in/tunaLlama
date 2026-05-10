@@ -104,6 +104,12 @@ mise run test                   # pytest
   handle (new slang, jargon) may impact search quality.
 - **No organic dogfooding measurement**. Since round 16 no real Claude
   Code everyday-use measurement (resumed in Phase 6).
+- **MCP tool system prompt cost**. 13 tools' description + schema are
+  prepended to the system prompt every Claude Code conversation.
+  Estimated ~1633 tokens (3.5 char/token heuristic). Actual Claude API
+  tokens not measured - real cost depends on whether prompt caching
+  applies. Details:
+  [docs/measurements/phase7-mcp-audit.md](docs/measurements/phase7-mcp-audit.md).
 
 ## What this is not
 

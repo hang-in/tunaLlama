@@ -53,25 +53,53 @@ def tuna_generate_code(requirements: str, language: str = "") -> str:
 
 
 @mcp.tool()
-def tuna_review_code(code: str, focus: str = "") -> str:
-    """Review code via local LLM. ``focus`` can be 'security', 'performance', etc."""
-    return call_delegation(
-        core_review_code,
-        recall_query=focus or None,
-        code=code,
-        focus=empty_to_none(focus),
-    )
+def tuna_review(code: str = "", file_path: str = "", focus: str = "") -> str:
+    """Review code via local LLM. Pass either ``code`` (inline snippet) OR
+    ``file_path`` (backend reads the file - content stays out of Claude's
+    context, major token saver). ``focus`` can be 'security', 'performance',
+    etc. Exactly one of ``code`` or ``file_path`` is required."""
+    if file_path and code:
+        return "[error] tuna_review: pass either `code` OR `file_path`, not both."
+    if file_path:
+        return call_delegation(
+            core_review_file,
+            recall_query=file_path,
+            file_path=file_path,
+            focus=empty_to_none(focus),
+        )
+    if code:
+        return call_delegation(
+            core_review_code,
+            recall_query=focus or None,
+            code=code,
+            focus=empty_to_none(focus),
+        )
+    return "[error] tuna_review: provide `code` or `file_path`."
 
 
 @mcp.tool()
-def tuna_explain_code(code: str, audience: str = "") -> str:
-    """Explain what code does. ``audience`` like 'beginner' / 'expert' adjusts depth."""
-    return call_delegation(
-        core_explain_code,
-        recall_query=None,  # explanation 은 recall 별 도움 X
-        code=code,
-        audience=empty_to_none(audience),
-    )
+def tuna_explain(code: str = "", file_path: str = "", audience: str = "") -> str:
+    """Explain code via local LLM. Pass either ``code`` (inline snippet) OR
+    ``file_path`` (backend reads the file - content stays out of Claude's
+    context). ``audience`` like 'beginner' / 'expert' adjusts depth. Exactly
+    one of ``code`` or ``file_path`` is required."""
+    if file_path and code:
+        return "[error] tuna_explain: pass either `code` OR `file_path`, not both."
+    if file_path:
+        return call_delegation(
+            core_explain_file,
+            recall_query=file_path,
+            file_path=file_path,
+            audience=empty_to_none(audience),
+        )
+    if code:
+        return call_delegation(
+            core_explain_code,
+            recall_query=None,  # explanation 은 recall 별 도움 X
+            code=code,
+            audience=empty_to_none(audience),
+        )
+    return "[error] tuna_explain: provide `code` or `file_path`."
 
 
 @mcp.tool()
@@ -115,29 +143,6 @@ def tuna_general_task(task: str, context: str = "") -> str:
         recall_query=task,
         task=task,
         context=empty_to_none(context),
-    )
-
-
-@mcp.tool()
-def tuna_review_file(file_path: str, focus: str = "") -> str:
-    """Review a file by **path**. Backend reads the file — its contents do NOT enter
-    Claude's context. Major token saver vs reading the file first then asking review."""
-    return call_delegation(
-        core_review_file,
-        recall_query=file_path,
-        file_path=file_path,
-        focus=empty_to_none(focus),
-    )
-
-
-@mcp.tool()
-def tuna_explain_file(file_path: str, audience: str = "") -> str:
-    """Explain a file by path. File content stays out of Claude's context."""
-    return call_delegation(
-        core_explain_file,
-        recall_query=file_path,
-        file_path=file_path,
-        audience=empty_to_none(audience),
     )
 
 
@@ -193,8 +198,12 @@ def tuna_log_limitation(description: str) -> str:
 
 @mcp.tool()
 def tuna_recall(query: str, limit: int = 5) -> str:
-    """Search past LLM delegations for similar work. Returns ranked summaries.
-    Useful before starting on a familiar codebase to surface prior decisions."""
+    """Search past LLM delegation **call records** for similar work. Returns
+    ranked summaries of prior `tuna_*` outputs that match `query` semantically
+    (BM25 + vector via BGE-M3). Different from `tuna_load_memory` which
+    returns this project's curated state.md (conventions / decisions /
+    constraints). Use `tuna_recall` to find past work; `tuna_load_memory`
+    for project rules."""
     cfg, _, store = _state._ensure()
     if store is None or not cfg.memory.enable_recall:
         return "리콜이 비활성화되어 있습니다 — config.toml 의 [memory] 확인."
@@ -221,8 +230,10 @@ def _memory_state_resource() -> str:
 
 @mcp.tool()
 def tuna_load_memory() -> str:
-    """Load this project's tunaLlama memory (conventions, decisions, constraints,
-    anti-patterns). Call this once at session start if MCP resources are not
+    """Load this project's **curated state.md** (conventions, active decisions,
+    constraints, anti-patterns) - the project's rules of the road. Different
+    from `tuna_recall` which searches past delegation outputs. Call once at
+    session start if the MCP resource `tunallama://memory/state` is not
     auto-attached. Path: ~/.tunallama/projects/<hash>/state.md."""
     from tunallama_core.memory.state import load_state, render
     state = load_state(project_root())

@@ -53,10 +53,10 @@ def test_subagent_file_exists_with_frontmatter():
 
 
 @pytest.mark.parametrize("tool_name", [
-    "tuna_generate_code", "tuna_review_code", "tuna_explain_code",
+    "tuna_generate_code", "tuna_review", "tuna_explain",
     "tuna_refactor_code", "tuna_fix_code", "tuna_write_tests",
-    "tuna_general_task", "tuna_review_file", "tuna_explain_file",
-    "tuna_analyze_files", "tuna_recall",
+    "tuna_general_task",
+    "tuna_analyze_files", "tuna_recall", "tuna_load_memory",
     "tuna_dev_review", "tuna_dev_review_from_spec", "tuna_log_limitation",
 ])
 def test_each_mcp_tool_is_registered(tool_name):

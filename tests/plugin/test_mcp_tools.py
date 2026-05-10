@@ -17,14 +17,29 @@ def test_tuna_generate_code_calls_backend(fake_state):
 
 
 def test_tuna_review_code_focus(fake_state):
-    mcp_server.tuna_review_code("def x(): pass", "security")
+    mcp_server.tuna_review(code="def x(): pass", focus="security")
     sent = fake_state["client"].calls[-1]
     assert "Focus: security" in sent["prompt"]
 
 
 def test_tuna_explain_code(fake_state):
-    mcp_server.tuna_explain_code("print(1)", "beginner")
+    mcp_server.tuna_explain(code="print(1)", audience="beginner")
     assert "Audience: beginner" in fake_state["client"].calls[-1]["prompt"]
+
+
+def test_tuna_review_requires_input(fake_state):
+    out = mcp_server.tuna_review()
+    assert "error" in out.lower()
+
+
+def test_tuna_review_rejects_both_inputs(fake_state):
+    out = mcp_server.tuna_review(code="x", file_path="/tmp/y.py")
+    assert "error" in out.lower()
+
+
+def test_tuna_explain_requires_input(fake_state):
+    out = mcp_server.tuna_explain()
+    assert "error" in out.lower()
 
 
 def test_tuna_refactor_code(fake_state):
@@ -53,7 +68,7 @@ def test_tuna_review_file_reads_file(fake_state, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)  # _project_root() = cwd 이므로 confinement 가 tmp_path
     f = tmp_path / "x.py"
     f.write_text("def login(): pass")
-    out = mcp_server.tuna_review_file(str(f), "security")
+    out = mcp_server.tuna_review(file_path=str(f), focus="security")
     assert out == fake_state["client"].text
     assert "def login" in fake_state["client"].calls[-1]["prompt"]
     rec = fake_state["store"].get(1)
@@ -65,7 +80,7 @@ def test_tuna_explain_file(fake_state, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     f = tmp_path / "y.py"
     f.write_text("Y = 1")
-    mcp_server.tuna_explain_file(str(f), "expert")
+    mcp_server.tuna_explain(file_path=str(f), audience="expert")
     assert "Y = 1" in fake_state["client"].calls[-1]["prompt"]
 
 

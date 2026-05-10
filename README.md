@@ -101,6 +101,11 @@ mise run test                   # pytest
   (신조어, 전문용어) 검색 품질 영향 가능.
 - **organic dogfooding 측정 부재**. Round 16 이후 실 Claude Code 일상
   사용 측정 X (Phase 6 부터 재개 예정).
+- **MCP 도구 system prompt 비용**. 13 도구 description + schema 가 매
+  conversation 의 system prompt 에 prepend. 추정 ~1633 tokens (영문
+  3.5 char/token 휴리스틱). 실 Claude API 토큰 측정 X - prompt caching
+  적용 여부에 따라 실 비용 달라짐. 자세한 측정은
+  [docs/measurements/phase7-mcp-audit.md](docs/measurements/phase7-mcp-audit.md).
 
 ## 무엇이 아닌가
 
