@@ -1,123 +1,185 @@
 # tunaLlama
 
-> Backend + Claude Code plugin that offloads heavy code generation to a local LLM while keeping decomposition and verification on Claude Code.
+Backend + Claude Code plugin that lets the main session (Architect) offload long-output coding work to a local LLM (Ollama / LM Studio) and keep decomposition + verification on the paid model.
 
-**Status**: Phase 1 in progress (alpha, unreleased)
-**License**: MIT
-**한국어**: [README.md](README.md)
+**Status**: Phase 1 + 1.5 done. alpha. unreleased.
+**License**: MIT.
+**한국어**: [README.md](README.md) — fuller, treated as the canonical version.
 
 ---
 
-## What it is
+## Why
 
-tunaLlama splits work across models by what each is good at, so paid Claude Code tokens stay on the smart steps.
-
-| Role | Model | Why |
-|---|---|---|
-| Architect | Claude Code (paid) | Decomposes requests. Short prompts in/out. |
-| Developer | Local LLM (free/cheap) | Generates code. Long output runs on your GPU. |
-| Reviewer | Claude Code (paid, same session) | Verifies output. Short prompts in/out. |
+Coding sessions on Claude Code spend most of their tokens on the **long-output** stages — code generation, file review, refactor — where model quality differences are small. The **short-input** stages — decomposing requirements, verifying that the returned code matches them — is where high-end model quality actually pays off. tunaLlama hardcodes that asymmetry into the workflow.
 
 Same architectural pattern as `OllamaClaude` (Jadael/OllamaClaude). Reimplemented from scratch in Python — pattern reference only, no code copy.
 
-Extra over OllamaClaude:
-- **SQLite + FTS5 long-term memory** — every delegation call recorded, searchable across sessions.
-- **Korean morpheme tokenizer** — write-time Kiwi tokenization so FTS5 recall actually works for Korean inputs.
-- **File-aware tools** — `review_file`, `explain_file`, `analyze_files` take a path only; file content never enters Claude's context.
+| Role | Model | Responsibility |
+|---|---|---|
+| Architect | Claude Code (paid) | Decompose / write spec / verify / integrate |
+| Developer | Local LLM (Ollama / Cloud / LM Studio) | Generate / self-review / self-fix |
+| Reviewer | Claude Code (paid, same session) | Final judgment |
 
-## What it is NOT
-
-- Not a tunaFlow consumer. Not a multi-agent roundtable.
-- Not a fork of OllamaClaude.
-- Not a single-model demo or research notebook.
-
-## Supported local LLMs
-
-- **Ollama (local)** — 27B-class models recommended (e.g. `qwen2.5:32b`).
-- **Ollama Cloud** — hosted models via API key.
-- **LM Studio** — OpenAI-compatible endpoint (`/v1/chat/completions`).
-
-Switch with one line: `[llm] provider = "..."` in `config.toml`.
-
-## Quick start
-
-> Unreleased. Will be stable when Phase 1 ships.
-
-### Users (just want to run it) — 5-minute walkthrough
-
-```bash
-# 1. clone + install
-git clone https://github.com/hang-in/tunaLlama
-cd tunaLlama
-pip install -e .                      # or `uv pip install -e .`
-
-# 2. interactive setup — provider, auto-discovered models, memory options
-tunallama init                        # default: ./.tunallama/config.toml
-# tunallama init --global             # to write ~/.tunallama/config.toml instead
-
-# 3. environment check — Python / config / provider / DB / Kiwi
-tunallama doctor
-
-# 4. (Ollama Cloud only) put the key in .env
-echo "OLLAMA_CLOUD_API_KEY=your_key" >> .env
-
-# 5. wire the plugin into Claude Code
-claude --plugin-dir ./plugin
-```
-
-What `tunallama init` does for you:
-- Auto-discovers installed models when local Ollama / LM Studio is running — pick by number
-- Prompts for the env var name when the provider needs an API key
-- Creates ~/.tunallama or ./.tunallama as needed
-
-### Contributors (dev setup)
-mise manages Python version + uv + `.venv` automatically.
-
-```bash
-git clone https://github.com/hang-in/tunaLlama
-cd tunaLlama                  # entering the dir auto-creates & activates .venv
-mise install                  # installs python 3.11 + uv
-mise run install              # editable + dev deps
-mise run test                 # pytest
-```
-
-If you don't have mise yet, see the [mise installation guide](https://mise.jdx.dev/getting-started.html).
-
-## Layout
+## Architecture
 
 ```
-tunallama_core/                  # Backend (reusable, MCP-agnostic)
+tunallama_core/                  # Backend — reusable, MCP-agnostic
   config/                        # TOML load + validation + frozen dataclasses
   llm/                           # Provider abstraction (ollama / lmstudio / factory)
   memory/                        # SQLite + FTS5 + Kiwi morpheme tokenization
-  delegation/                    # 10 tools + shared runner + prompts
+  delegation/                    # 10 tools + shared runner + system prompts
+  workflow/                      # dev_review_loop / spec / limitations
   routing.py                     # auto_recall policy
-  errors.py                      # domain exceptions
-plugin/                          # Claude Code plugin (consumes backend)
+  errors.py
+  cli/                           # tunallama init / doctor
+
+plugin/                          # Claude Code plugin — consumes backend
   .claude-plugin/plugin.json
   .mcp.json
-  mcp_server.py                  # FastMCP server (11 tuna_* tools)
-  _state.py / _format.py
+  mcp_server.py                  # FastMCP server, 14 tuna_* tools
+  _state.py                      # lazy singleton + .env autoload
+  _format.py
+  hooks/pre_tool_use.py          # large-file Read advisory (off by default)
   skills/delegate-to-ollama/SKILL.md
   agents/tuna-developer.md
-tests/
-  core/                          # backend unit + integration tests
-  plugin/                        # plugin tool / manifest tests
 ```
 
-`tunallama_core` never imports anything from `plugin`. This boundary is what makes a future Codex frontend (Phase 4) cheap.
+**Invariant**: `tunallama_core` never imports anything from `plugin`. Phase 4 (Codex frontend) will reuse the backend unchanged.
 
-## Status (Phase 1)
+## Memory + search
 
-- 11 MCP tools exposed: `tuna_generate_code`, `tuna_review_file`, `tuna_recall`, etc.
-- Every call recorded to SQLite, Korean queries supported via morpheme tokenizer.
-- 177 tests, 99% coverage.
-- Integration tests hit real Ollama Cloud / LM Studio (auto-skip when unavailable).
+Every delegation call is recorded into SQLite + FTS5. Korean inputs are pre-tokenized with Kiwi at write-time so `unicode61` recall works:
 
-## Development status
+```python
+_KEEP_TAGS = {"NNG", "NNP", "NNB", "VV", "VA", "MAG", "MAJ", "SL"}
 
-`docs/handoff-tunallama-phase1.md` is the source of truth for Phase 1. Decisions that diverge from the handoff are recorded in `CHANGELOG.md`.
+def kiwi_morphemes(text):
+    tokens = _get_kiwi().tokenize(text)
+    morph = " ".join(t.form for t in tokens if t.tag in _KEEP_TAGS)
+    return f"{morph} {text}".strip()
+```
 
-## Contributing / License
+`NNB` (dependent nouns) added per the seCall reference. No FTS triggers — application-level INSERT into both `calls` and `calls_fts` since pre-tokenization can't live inside a SQL trigger anyway.
 
-MIT. Issues and PRs welcome in either Korean or English.
+`tuna_recall(query, limit)` returns ranked summaries, never the full original output. The whole point is to keep recall results small.
+
+## Provider abstraction
+
+| Provider | host default | key |
+|---|---|---|
+| ollama | `http://localhost:11434` | none |
+| ollama_cloud | `https://ollama.com` | env var named by `api_key_env` |
+| lmstudio | `http://localhost:1234/v1` | dummy |
+
+Tests don't mock the SDK. Integration tests hit real Ollama Cloud (`gemma4:31b`) and local LM Studio (`nvidia/nemotron-3-nano-4b`); they auto-skip when the service is unavailable.
+
+## Workflow
+
+### dev_review loop
+
+```python
+dev_review_loop(requirements, ..., max_iterations=2)
+# generate → review → (if issues) fix → review → ...
+# converges on LGTM/이상 없음 markers, otherwise stops at max_iterations
+```
+
+### Spec document
+
+Architect writes a short markdown doc; subagent reads it. Optional headers (recommended for small models per gemento's phase-driven decomposition findings):
+
+```markdown
+# Task: build email validator
+
+## Phase
+IMPLEMENT          # DESIGN | IMPLEMENT | VERIFY
+
+## Focus
+regex matcher first
+
+## Requirements
+- regex check
+- reject empty
+
+## Constraints
+- stdlib only
+- no external calls
+
+## Acceptance
+- pytest 5 cases pass
+```
+
+`Constraints` lines are hard rules — violating them sends the output back through the fix loop.
+
+### Limitations catalog
+
+```bash
+tuna_log_limitation("model breaks indentation in Korean docstrings")
+```
+
+Appended to `~/.tunallama/limitations.md` and auto-prepended to future `tuna_dev_review` prompts. Manual logging — no auto-detection.
+
+## Install
+
+```bash
+git clone https://github.com/hang-in/tunaLlama
+cd tunaLlama
+pip install -e .                 # or `uv pip install -e .`
+
+tunallama init                   # interactive — picks provider + auto-discovers models
+tunallama doctor                 # Python / config / provider / DB / Kiwi check
+
+echo "OLLAMA_CLOUD_API_KEY=your_key" >> .env   # if using cloud
+
+# Permanently register in ~/.claude/settings.json:
+# {
+#   "mcpServers": {
+#     "tunallama": {
+#       "command": "/abs/path/tunaLlama/.venv/bin/python",
+#       "args": ["-m", "plugin.mcp_server"],
+#       "cwd": "/abs/path/tunaLlama"
+#     }
+#   }
+# }
+```
+
+`cwd` at the project root → plugin auto-loads `.env` and `./.tunallama/config.toml`.
+
+### Contributors
+
+```bash
+mise install
+mise trust                       # mise.toml security trust
+mise run install
+mise run test
+```
+
+## Tests
+
+```
+$ pytest
+... 249 passed in 8.65s
+... TOTAL 94% line+branch
+```
+
+Unit tests use a `StaticClient` fake (deterministic ChatResponse, captures prompts). Integration tests use real services; mocks intentionally avoided so SDK schema/type drift isn't masked.
+
+## Out of scope
+
+- Multi-agent roundtable (a different project's job).
+- OllamaClaude fork — pattern reference only.
+- Codex CLI integration — Phase 4, separate handoff.
+- Auto weakness detection / dynamic tool authoring — Phase 2 candidates.
+
+## Phase 2 candidates (parked)
+
+- Vector embeddings (BGE-M3) + HNSW for semantic recall
+- RRF (reciprocal rank fusion) over BM25 + vector
+- Rule-based graph edges (`same_project`, `same_day`)
+- LLM-derived semantic edges (`fixes_bug`, `modifies_file`)
+- Auto hook routing (force `Read` → `tuna_review_file`)
+- Non-interactive `tunallama init --provider ... --model ...`
+- gemento's `remediation_hint` (structured review output) — parked due to LLM-output-parsing fragility
+
+## License / contributing
+
+MIT. Issues and PRs welcome in either Korean or English. Keep [README.md](README.md) (Korean canonical) and this file in sync.

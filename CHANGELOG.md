@@ -13,6 +13,13 @@
 - **delegation** (`tunallama_core/delegation/`): 10 도구 (`generate_code`/`review_code`/`explain_code`/`refactor_code`/`fix_code`/`write_tests`/`general_task`/`review_file`/`explain_file`/`analyze_files`). 파일 도구는 내용을 LLM 에는 전달하지만 메모리 로그에는 경로만 기록 (핸드오프 §7.4 시나리오 B).
 - **routing** (`tunallama_core/routing.py`): `recall_for_delegation(routing, store, ...)` — `never` / `on_request` / `always` 정책.
 
+### Plugin 영구 등록 + .env 자동 로드
+- `plugin/_state.py` 가 첫 호출 시 cwd → 프로젝트 루트 순으로 `.env` 자동 로드. settings.json 에 평문 키를 적지 않아도 `OLLAMA_CLOUD_API_KEY` 등이 채워진다.
+- `tunallama_core/cli/main.py` 도 동일한 cwd `.env` 로드 — `tunallama doctor` / `init` 가 plugin 과 동일한 환경을 본다.
+- `python-dotenv >= 1.0` 을 런타임 의존성에 명시.
+- README 한국어/영문 동기화 + 마케팅 톤 제거 + 기술 포스트 형식.
+- `docs/specs/iso_datetime_parser.md` — 첫 dogfooding 샘플 spec.
+
 ### Phase 1 Onboarding CLI
 - `tunallama init` — 대화식 config.toml 생성기. provider 선택 → 모델 자동 발견(로컬 Ollama / LM Studio) → 환경변수 키 안내 → 메모리 옵션. 표준 라이브러리만 사용.
 - `tunallama doctor` — 환경 진단(Python / config / provider 가용 / DB write / Kiwi). 실패 시 조치 단서 포함.
