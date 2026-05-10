@@ -25,6 +25,9 @@ dependencies = [
     "mcp>=1.0.0",
     "kiwipiepy>=0.20.0",
     "python-dotenv>=1.0.0",
+    # Phase 2 — semantic recall
+    "sentence-transformers>=3.0",
+    "numpy>=1.26",
 ]
 
 [project.optional-dependencies]
