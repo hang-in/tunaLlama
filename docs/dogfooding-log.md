@@ -165,7 +165,56 @@ qwen3-coder:480b            1.00    0.68    0.57    1.00
 
 ---
 
-## Phase 5-1b 결과 - KURE-v1 swap (BGE-M3 → KURE-v1, 10분 14초, cloud 0)
+## Phase 5-D 결과 - Adaptive routing (KURE + adaptive, 25분 56초, cloud 20)
+
+```
+category distribution: {'natural': 20, 'mixed': 4}
+cloud calls: hybrid=0, hyde_only=24, adaptive=20  (16.7% saving)
+
+path        P@1   R@5   MRR   NDCG@5  sigmaP@1  sigmaR@5
+hybrid     0.38  0.30  0.51   0.32     0.49     0.29
+hyde_only  0.92  0.49  0.95   0.59     0.28     0.19
+adaptive   0.92  0.51  0.95   0.60     0.28     0.19
+```
+
+- **adaptive ≈ hyde_only** (P@1 동일, R@5 +0.02, σ 동일).
+- cloud 호출 24 → 20 (16.7% 절감) - **순수 가성비 개선**.
+- 휴리스틱 분류: 한국어 비중 > 30% → natural (HyDE), 그 외 → mixed (rerank).
+- 시드 한국어 비중 큼 → 'natural' 20/24. 실 영문 비중 환경에선 cloud 절감
+  더 클 가능.
+- σR@5 0.19 vs 이전 5-2C-KURE 의 HyDE σ 0.14 차이 - **single measurement
+  variance** + HyDE LLM 응답 비결정성. σ 자체도 σ 가짐.
+
+## Phase 5-2C-KURE 결과 - KURE + HyDE 조합 (1시간 03분, cloud 48)
+
+```
+path                   P@1     R@5     MRR    NDCG@5    sigmaP@1    sigmaR@5
+hybrid_pool20         0.38    0.30    0.51      0.32        0.49        0.29
+rerank_pool50         0.54    0.38    0.71      0.42        0.51        0.24
+normalized            0.67    0.38    0.75      0.45        0.48        0.22
+hyde                  0.92    0.51    0.96      0.60        0.28        0.14
+```
+
+### BGE-M3 vs KURE (HyDE path 동일 비교)
+
+```
+metric           BGE-M3   KURE    diff    note
+HyDE P@1          0.92    0.92    0.00    동일
+HyDE R@5          0.50    0.51   +0.01    KURE 약간 우세
+HyDE σR@5         0.16    0.14   -0.02    *** 목표 σ ≤ 0.15 달성 ***
+HyDE σP@1         0.28    0.28    0.00    동일
+normalized P@1    0.71    0.67   -0.04    BGE-M3 우세 (정규화 출력 영문)
+hybrid baseline   0.33    0.38   +0.05    KURE 약간 우세
+```
+
+- **HyDE + KURE 조합 = production RAG σ ≤ 0.15 달성 (σR@5 0.14)**.
+- KURE 가 HyDE 환경에서 한국어 paraphrase variance 흡수 효과 ↑.
+- normalized 는 BGE-M3 우세 (정규화된 영문 standard form 처리에 multilingual 강점).
+- **path 별 best embedding 추천**:
+  - HyDE → KURE-v1 (R@5 +0.01, σR@5 -0.02)
+  - 그 외 → BGE-M3 또는 둘 비슷 (default 유지)
+
+
 
 ```
 path           BGE-M3 P@1  KURE P@1  diff    BGE-M3 R@5  KURE R@5  diff

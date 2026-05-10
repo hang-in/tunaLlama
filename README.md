@@ -161,6 +161,18 @@ def embed(text: str) -> np.ndarray:
 | reranked hybrid (cross-encoder bge-reranker-v2-m3) | 0.69 |
 | reranked BM25 | 0.25 |
 
+**Phase 5-D - Adaptive routing** (KURE + 휴리스틱 라우터, 24 group leader)
+
+| 경로 | P@1 | R@5 | MRR | σR@5 | cloud 호출 |
+|---|---:|---:|---:|---:|---:|
+| hybrid baseline | 0.38 | 0.30 | 0.51 | 0.29 | 0 |
+| HyDE only | 0.92 | 0.49 | 0.95 | 0.19 | 24 |
+| **adaptive** | **0.92** | **0.51** | **0.95** | **0.19** | **20** (-16.7%) |
+
+- 휴리스틱: 한국어 비중 > 30% → HyDE, 그 외 → rerank hybrid (cloud 0).
+- adaptive ≈ HyDE only 품질 + cloud 17% 절감.
+- 함수: `recall_adaptive(store, query, *, cloud_client=None, limit=5)`.
+
 **Phase 5-2C - HyDE 가 새 production-RAG winner** (524 record, 24 group leader sample)
 
 | 경로 | P@1 | R@5 | MRR | NDCG@5 | σR@5 |
