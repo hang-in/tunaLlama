@@ -3,7 +3,7 @@
 [![CI](https://github.com/hang-in/tunaLlama/actions/workflows/ci.yml/badge.svg)](https://github.com/hang-in/tunaLlama/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Status: early beta](https://img.shields.io/badge/status-early%20beta-orange.svg)](#)
+[![Status: production](https://img.shields.io/badge/status-production-brightgreen.svg)](#)
 [![Tests: 475 passing](https://img.shields.io/badge/tests-475%20passing-brightgreen.svg)](#)
 [![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
 [![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
@@ -15,7 +15,7 @@ Claude Code / Codex CLI 쓰면서 토큰 빨리 닳는 사용자를 위한 위�
 Claude Code 와 Codex CLI 둘 다 작동** (둘 다 `.claude-plugin/marketplace.json`
 인식).
 
-**상태**: v0.4.0 출시 (early beta). v0.5.0 production release 준비 중.
+**상태**: **v0.5.0 production release** (2026-05-11). Claude Code + Codex CLI 둘 다 검증 완료.
 **라이선스**: [MIT](LICENSE). **English**: [README.en.md](README.en.md).
 
 ---

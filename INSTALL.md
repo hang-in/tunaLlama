@@ -198,4 +198,14 @@ README.md 의 "첫 호출 해보기" 섹션에 예시 더 있음.
   영향).
 - 모든 단계는 idempotent - 다시 실행해도 안전.
 - 에이전트가 모르는 prompt 만나면 사용자한테 명시 질문 후 진행.
-- 사용자 환경에서 검증된 Codex CLI 버전: **0.128.0**.
+
+### 검증된 환경 (2026-05-11)
+
+- **Codex CLI 0.128.0**: `codex plugin marketplace add` + `codex mcp add`
+  → 13 도구 list / `tuna_load_memory` / `tuna_recall` / `tuna_generate_code`
+  모두 정상 작동 확인.
+- env 전달: shell 에 export 된 `OLLAMA_CLOUD_API_KEY` 가 Codex 가 spawn
+  한 MCP server 에 자동 상속 (또는 `plugin/_state.py` 가 `.env` 자동 로드).
+  사용자 환경에 따라 다르므로 작동 안 하면 `codex mcp remove tunallama` +
+  `codex mcp add tunallama --env OLLAMA_CLOUD_API_KEY=...` 재등록.
+- Claude Code: marketplace + plugin install 한 묶음으로 작동.

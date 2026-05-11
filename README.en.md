@@ -3,7 +3,7 @@
 [![CI](https://github.com/hang-in/tunaLlama/actions/workflows/ci.yml/badge.svg)](https://github.com/hang-in/tunaLlama/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Status: early beta](https://img.shields.io/badge/status-early%20beta-orange.svg)](#)
+[![Status: production](https://img.shields.io/badge/status-production-brightgreen.svg)](#)
 [![Tests: 475 passing](https://img.shields.io/badge/tests-475%20passing-brightgreen.svg)](#)
 [![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
 [![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
@@ -16,7 +16,7 @@ Ollama Cloud; decomposition and verification stay with the architect
 Code and Codex CLI** - Codex CLI also reads
 `.claude-plugin/marketplace.json`.
 
-**Status**: v0.4.0 (early beta). v0.5.0 production release in preparation.
+**Status**: **v0.5.0 production release** (2026-05-11). Verified on both Claude Code and Codex CLI.
 **License**: [MIT](LICENSE). **Korean**: [README.md](README.md) (canonical).
 
 ---
