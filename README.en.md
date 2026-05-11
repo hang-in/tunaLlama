@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Status: production](https://img.shields.io/badge/status-production-brightgreen.svg)](#)
-[![Tests: 475 passing](https://img.shields.io/badge/tests-475%20passing-brightgreen.svg)](#)
+[![Tests: 483 passing](https://img.shields.io/badge/tests-483%20passing-brightgreen.svg)](#)
 [![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
 [![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
 
@@ -197,9 +197,19 @@ Full 13-tool list: [docs/internals.md](docs/internals.md#mcp-tools).
   `llm/lmstudio.py` 58% - covered when `pytest -m integration` runs
   against live services). `token_count.py` 34% is the deferred
   Phase 5-4 module (no Anthropic API access here).
-- **Codex subagent auto-discovery** (`plugin/agents/tuna-developer.toml`)
-  and **`tunallama://memory/state` resource auto-attach** unverified
-  on Codex 0.128.0. v0.6.0 candidate. The 13 MCP tools themselves work.
+- **Codex subagent auto-discovery does NOT work** (Codex 0.128.0 live
+  test): `plugin/agents/tuna-developer.toml` is cached, but Codex's
+  `spawn_agent` types list only includes default / explorer / worker -
+  `tuna-developer` not registered. The 13 MCP tools work; delegation
+  happens at the tool layer.
+- **MCP resource auto-attach does NOT work** (Codex 0.128.0 live test):
+  `tunallama://memory/state` is not attached at session start.
+  **Explicit `tuna_load_memory` call required**. SKILL.md instructs
+  the architect to call it once per session.
+- **state.md auto-extract false positives**. v0.5.1 strips code-block
+  contents and filters tokens by meaningfulness - not 100% eliminated.
+  Use `tunallama state clean` (delete auto entries) or edit directly
+  (`tunallama state path` for the path).
 
 ## What this is not
 
@@ -311,8 +321,8 @@ Detailed contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md).
 - [docs/specs/](docs/specs/)
 - [docs/dogfooding-log.md](docs/dogfooding-log.md)
 - [docs/release-notes/](docs/release-notes/)
-  ([v0.5.0](docs/release-notes/v0.5.0.md) · [v0.4.0](docs/release-notes/v0.4.0.md) ·
-  [v0.3.0](docs/release-notes/v0.3.0.md))
+  ([v0.5.1](docs/release-notes/v0.5.1.md) · [v0.5.0](docs/release-notes/v0.5.0.md) ·
+  [v0.4.0](docs/release-notes/v0.4.0.md) · [v0.3.0](docs/release-notes/v0.3.0.md))
 - [CHANGELOG.md](CHANGELOG.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [config.example.toml](config.example.toml)

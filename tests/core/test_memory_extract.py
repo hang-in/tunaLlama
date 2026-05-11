@@ -169,3 +169,61 @@ def test_clean_strips_quotes_and_truncates():
     assert any(
         '"' not in e.text and "HyDE" in e.text for e in out
     )
+
+
+# v0.5.1 regression tests - false positive 회피
+
+
+def test_skip_code_block_content():
+    """LLM 출력의 ``` ... ``` 코드 블록 안 텍스트는 추출 대상 X.
+
+    실 사례 (구구단 위임 결과 state.md 오염):
+    "Default (2-9)" / "usage" 같은 noise 가 docstring/주석에서 추출됐음.
+    """
+    text = '''```python
+def gugudan(start=2, end=9):
+    # 1. Default usage (2-9)
+    print("--- Default (2-9) ---")
+    return list(range(start, end))
+```
+'''
+    out = extract_decisions(text)
+    # 코드 블록 안의 "Default (2-9)" / "(2-9) ---")" 등은 추출 안 되어야.
+    assert all("usage" not in e.text or "default" not in e.text.lower()
+               for e in out), f"unexpected entries: {[e.text for e in out]}"
+
+
+def test_skip_meaningless_token_only():
+    """알파벳/한글 4+ char 토큰 없으면 skip."""
+    text = "결정했다: (2-9)"  # 토큰 없음
+    out = extract_decisions(text)
+    assert out == []
+
+
+def test_skip_pure_stopword_entry():
+    """stopword 만으로 이뤄진 entry skip ('default' 같은 일반어)."""
+    text = "default: usage"  # 모두 stopword
+    out = extract_decisions(text)
+    assert all(e.text.lower() != "usage" and e.text.lower() != "default"
+               for e in out)
+
+
+def test_extract_outside_code_block_still_works():
+    """코드 블록 외부의 정상 entry 는 그대로 추출."""
+    text = '''
+결정했다: HyDE hybrid 채택.
+
+```python
+# 코드 부분
+def foo():
+    return "default value"
+```
+
+추가로 절대 mock 사용 금지.
+'''
+    out = extract_decisions(text) + extract_constraints(text)
+    # HyDE 채택 + mock 금지 둘 다 잡혀야.
+    assert any("HyDE" in e.text for e in out)
+    assert any("mock" in e.text.lower() for e in out)
+    # 코드 블록 안의 "default value" 는 안 잡혀야.
+    assert all("default value" not in e.text for e in out)

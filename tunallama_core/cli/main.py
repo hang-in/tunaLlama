@@ -38,6 +38,17 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("doctor", help="환경 진단 — Python / config / provider / DB / Kiwi")
 
+    p_state = sub.add_parser(
+        "state", help="project state.md 관리 (보기 / 경로 / cleanup)"
+    )
+    p_state.add_argument(
+        "action",
+        nargs="?",
+        default="show",
+        choices=["show", "path", "clean"],
+        help="show: 내용 출력 / path: 파일 경로 / clean: auto entry 삭제 (manual / verified 보존)",
+    )
+
     return parser
 
 
@@ -52,6 +63,10 @@ def run(argv: list[str] | None = None) -> int:
         from .doctor_cmd import run_doctor
 
         return run_doctor()
+    if args.cmd == "state":
+        from .state_cmd import run_state
+
+        return run_state(action=args.action)
     return 0
 
 

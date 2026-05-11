@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Status: production](https://img.shields.io/badge/status-production-brightgreen.svg)](#)
-[![Tests: 475 passing](https://img.shields.io/badge/tests-475%20passing-brightgreen.svg)](#)
+[![Tests: 483 passing](https://img.shields.io/badge/tests-483%20passing-brightgreen.svg)](#)
 [![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
 [![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
 
@@ -196,9 +196,17 @@ Claude/Codex: tuna_recall(query="BGE-M3 임베딩 사용")
   외부 서비스 의존 path (`llm/ollama.py` 62% / `llm/lmstudio.py` 58% -
   통합 테스트 `pytest -m integration` 실행 시 추가 커버). `token_count.py`
   34% 는 Phase 5-4 보류 모듈 (Anthropic API 미보유라 unit test 없음).
-- **Codex subagent 자동 인식** (`plugin/agents/tuna-developer.toml`) +
-  **`tunallama://memory/state` resource auto-attach** 는 Codex 0.128.0
-  에서 미검증. v0.6.0 후보. MCP 도구 13 개는 정상 작동 확인.
+- **Codex subagent 자동 인식 미작동** (Codex 0.128.0 실측): `plugin/agents/
+  tuna-developer.toml` 가 캐시되지만 Codex 의 `spawn_agent` 가능 type 에
+  `tuna-developer` 등록 안 됨 (default / explorer / worker 만). MCP tools
+  13 개는 정상 작동 - delegation 은 도구 레벨에서 가능.
+- **MCP resource auto-attach 미작동** (Codex 0.128.0 실측): `tunallama://
+  memory/state` resource 가 세션 시작 시 자동 첨가 안 됨. **`tuna_load_memory`
+  명시 호출 필요**. SKILL.md 안내 따라 architect 가 자동 호출하도록 의존.
+- **state.md auto-extract false positive 위험**. v0.5.1 에서 코드 블록
+  안 텍스트 skip + meaningful 토큰 검증으로 완화 - 단 100% 제거는 어려움.
+  의심 entry 발견 시 `tunallama state clean` (auto entry 삭제) 또는 직접
+  편집 (`tunallama state path` 로 경로 확인).
 
 ## 무엇이 아닌가
 
@@ -279,7 +287,18 @@ resource 미attach 가능. `tuna_load_memory` 명시 호출 시도.
 
 ### state.md auto-extract 의도치 않은 entry
 
-**파일 위치**: `~/.tunallama/projects/<hash>/state.md`. 직접 편집 가능.
+**원인**: LLM 출력의 코드 블록 / 주석 / 일반 단어 가 false positive 로
+auto-extract 됨 (v0.5.1 부터 코드 블록 안 텍스트 + meaningful 토큰 검증
+필터 추가, 단 100% X).
+
+**CLI 명령** (v0.5.1+):
+```bash
+tunallama state show    # 내용 출력
+tunallama state path    # 파일 경로 출력
+tunallama state clean   # (auto) 태그 entry 삭제, manual/verified 보존
+```
+
+**파일 위치**: `~/.tunallama/projects/<hash>/state.md`. 직접 편집도 가능.
 
 **`(manual)` 또는 `(verified)` 태그**: 사용자 수정은 다음 update 시 보존.
 
@@ -307,8 +326,8 @@ mise run test                   # pytest (unit + plugin only)
 - [docs/specs/](docs/specs/) - Phase 별 spec 문서.
 - [docs/dogfooding-log.md](docs/dogfooding-log.md) - 라운드별 dogfooding 결과.
 - [docs/release-notes/](docs/release-notes/) - 릴리즈 노트
-  ([v0.5.0](docs/release-notes/v0.5.0.md) · [v0.4.0](docs/release-notes/v0.4.0.md) ·
-  [v0.3.0](docs/release-notes/v0.3.0.md)).
+  ([v0.5.1](docs/release-notes/v0.5.1.md) · [v0.5.0](docs/release-notes/v0.5.0.md) ·
+  [v0.4.0](docs/release-notes/v0.4.0.md) · [v0.3.0](docs/release-notes/v0.3.0.md)).
 - [CHANGELOG.md](CHANGELOG.md) - 변경 이력.
 - [CONTRIBUTING.md](CONTRIBUTING.md) - 기여 가이드.
 - [config.example.toml](config.example.toml) - config 필드 + 주석.

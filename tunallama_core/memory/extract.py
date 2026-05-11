@@ -98,12 +98,50 @@ def _clean(text: str, *, max_len: int = 140) -> str:
     return text
 
 
+# v0.5.1: 코드 블록 안 텍스트는 LLM 출력의 실 코드 - decision/convention/
+# constraint/antipattern 추출 대상 X. delegation 후처리에서 false positive
+# (구구단 출력의 "Default usage (2-9)" 같은 entry) 회피.
+_CODE_BLOCK_RE = re.compile(r"```.*?```", re.DOTALL)
+
+
+def _strip_code_blocks(text: str) -> str:
+    """코드 펜스 (```...```) 안 텍스트 제거. LLM 출력의 실 코드는 entry
+    추출에서 제외 - false positive 회피.
+    """
+    return _CODE_BLOCK_RE.sub("\n", text)
+
+
+# v0.5.1: 의미 있는 entry 인지 검증.
+# - 알파벳/한글 4 char 이상이 있어야 (괄호/숫자/punctuation 만이면 noise).
+# - stopword 만으로 이뤄진 entry skip.
+_MEANINGFUL_RE = re.compile(r"[a-zA-Z가-힣]{4,}")
+_NOISE_STOPWORDS = {
+    "usage", "default", "examples", "example", "note", "notes", "todo",
+    "fixme", "hack", "warning", "info",
+}
+
+
+def _is_meaningful(text: str) -> bool:
+    """text 가 의미 있는 entry 인지. 4+ 알파벳/한글 토큰 1 개 이상 필요."""
+    if not _MEANINGFUL_RE.search(text):
+        return False
+    # 모두 stopword 면 skip.
+    words = [w.lower() for w in re.findall(r"[A-Za-z가-힣]+", text)]
+    if words and all(w in _NOISE_STOPWORDS for w in words):
+        return False
+    return True
+
+
 def _extract_with(patterns, text: str, kind: EntryKind) -> list[ExtractedEntry]:
+    # 코드 블록 제거 후 추출 - LLM 코드 출력의 false positive 회피.
+    stripped = _strip_code_blocks(text)
     entries: list[ExtractedEntry] = []
     for pat in patterns:
-        for m in pat.finditer(text):
+        for m in pat.finditer(stripped):
             extracted = _clean(m.group("text"))
             if len(extracted) < 4:
+                continue
+            if not _is_meaningful(extracted):
                 continue
             # confidence = 패턴 종류에 따라 0.5-0.9 사이.
             confidence = 0.7
@@ -111,7 +149,7 @@ def _extract_with(patterns, text: str, kind: EntryKind) -> list[ExtractedEntry]:
                 kind=kind,
                 text=extracted,
                 confidence=confidence,
-                source_excerpt=text[max(0, m.start() - 20): m.end() + 20],
+                source_excerpt=stripped[max(0, m.start() - 20): m.end() + 20],
             ))
     return entries
 
