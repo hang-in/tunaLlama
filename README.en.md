@@ -210,7 +210,7 @@ Full 13-tool list: [docs/internals.md](docs/internals.md#mcp-tools).
   a fresh session). **Recommended operation**: architect reads docs
   directly, or the user explicitly says "call `tuna_load_memory` first."
 
-### Cross-environment behavior matrix (v0.5.3, Claude Code 2.1.138 + Codex CLI 0.128.0)
+### Cross-environment behavior matrix (v0.5.6, Claude Code 2.1.138 + Codex CLI 0.128.0)
 
 | Item | Claude Code | Codex CLI |
 |---|---|---|
@@ -218,18 +218,23 @@ Full 13-tool list: [docs/internals.md](docs/internals.md#mcp-tools).
 | DB sharing (`~/.tunallama/memory.db`) | ✓ | ✓ |
 | state.md sharing (`~/.tunallama/projects/<hash>/state.md`) | ✓ | ✓ |
 | Explicit `tuna_load_memory` / `tuna_recall` | ✓ | ✓ |
+| **Agents auto-discovery** (`tuna-developer`) | **✓** | ✗ |
+| **Skills auto-load** (`delegate-to-ollama`) | **✓** | ? |
+| **Hooks registration** (`SessionStart` / `PreToolUse`) | **✓** | ? |
+| **SessionStart hook execution + state.md auto-prepend** | **✓** (v0.5.5 schema fix, verified) | ✗ |
 | **MCP resource auto-attach** | ✗ | ✗ |
-| **SessionStart hook (state.md prepend)** | ✗ (sentinel test) | ✗ |
-| **Subagent auto-discovery** | ✗ | ✗ |
 
 ### Recommended operation
 
-When state.md auto-attach / SessionStart hook are unavailable:
-- Architect (Claude / Codex) reads docs (README / CONTRIBUTING /
-  docs/workflow.md) directly to grasp conventions - **works well in
-  practice**.
-- Or user explicitly says "call `tuna_load_memory` first" at session start.
-- v0.6.0 candidate: upstream client PR or alternative workaround.
+**Claude Code** (v0.5.5+):
+- state.md auto-prepend via SessionStart hook works end-to-end - the
+  architect knows conventions / decisions / constraints / anti-patterns
+  from the first turn. No explicit `tuna_load_memory` needed.
+
+**Codex CLI** 0.128.0:
+- SessionStart hook not honored - architect calls `tuna_load_memory`
+  explicitly at the first turn, or fetches docs directly.
+- DB / state.md sharing and MCP tool invocation work fine.
 
 - **state.md auto-extract false positives**. v0.5.1 strips code-block
   contents and filters tokens by meaningfulness - not 100% eliminated.

@@ -208,7 +208,7 @@ Claude/Codex: tuna_recall(query="BGE-M3 임베딩 사용")
   session 의 architect 컨텍스트에 도달 X). **실제 권장 운영**: architect 가
   docs 직접 읽거나 사용자가 `tuna_load_memory` 명시 호출 안내.
 
-### 양 환경 동작 매트릭스 (v0.5.4 실측 - Claude Code 2.1.138 + Codex CLI 0.128.0)
+### 양 환경 동작 매트릭스 (v0.5.6 실측 - Claude Code 2.1.138 + Codex CLI 0.128.0)
 
 | 항목 | Claude Code | Codex CLI |
 |---|---|---|
@@ -216,19 +216,24 @@ Claude/Codex: tuna_recall(query="BGE-M3 임베딩 사용")
 | DB 공유 (`~/.tunallama/memory.db`) | ✓ | ✓ |
 | state.md 공유 (`~/.tunallama/projects/<hash>/state.md`) | ✓ | ✓ |
 | `tuna_load_memory` / `tuna_recall` 명시 호출 | ✓ | ✓ |
-| **Agents auto-discovery** (`tuna-developer`) | **✓** (UI 확인) | ✗ |
-| **Skills auto-load** (`delegate-to-ollama`) | **✓** (UI 확인) | ? |
-| **Hooks 등록** (`SessionStart` / `PreToolUse`) | **✓** (UI 확인) | ? |
-| **SessionStart hook 실 실행 / state.md prepend** | v0.5.4 재검증 중 | ✗ |
-| **MCP resource auto-attach** | ✗ | ✗ |
+| **Agents auto-discovery** (`tuna-developer`) | **✓** | ✗ |
+| **Skills auto-load** (`delegate-to-ollama`) | **✓** | ? |
+| **Hooks 등록** (`SessionStart` / `PreToolUse`) | **✓** | ? |
+| **SessionStart hook 실 실행 + state.md auto-prepend** | **✓** (v0.5.5 schema fix + 실측) | ✗ |
+| **MCP resource auto-attach** (`tunallama://memory/state`) | ✗ | ✗ |
 
 ### 권장 운영 모델
 
-state.md auto-attach / SessionStart hook 미작동 시 fallback:
-- Architect (Claude / Codex) 가 docs (README / CONTRIBUTING / docs/workflow.md 등)
-  직접 읽어 컨벤션 파악 - **실측에서 작동 잘 함**.
-- 또는 사용자가 첫 turn 에 "`tuna_load_memory` 호출해서 state.md 보여줘" 명시 안내.
-- v0.6.0 후보: 클라이언트 측 hook 인식 PR 또는 다른 우회.
+**Claude Code** (v0.5.5+):
+- state.md auto-prepend 가 SessionStart hook 으로 작동 - architect 가 첫
+  turn 부터 conventions / decisions / constraints / anti-patterns 자동 인지.
+- 별도 명시 호출 불필요. 단 사용자가 state.md 의도적 수정 후 effect 빨리
+  보고 싶으면 새 세션 시작.
+
+**Codex CLI** 0.128.0:
+- SessionStart hook 인식 안 됨 - architect 가 첫 turn 에 `tuna_load_memory`
+  명시 호출 또는 docs 직접 fetch.
+- DB 공유 / state.md 공유 / MCP tools 호출은 모두 작동.
 
 - **state.md auto-extract false positive 위험**. v0.5.1 에서 코드 블록
   안 텍스트 skip + meaningful 토큰 검증으로 완화 - 단 100% 제거는 어려움.
@@ -353,8 +358,8 @@ mise run test                   # pytest (unit + plugin only)
 - [docs/specs/](docs/specs/) - Phase 별 spec 문서.
 - [docs/dogfooding-log.md](docs/dogfooding-log.md) - 라운드별 dogfooding 결과.
 - [docs/release-notes/](docs/release-notes/) - 릴리즈 노트
-  ([v0.5.5](docs/release-notes/v0.5.5.md) · [v0.5.4](docs/release-notes/v0.5.4.md) ·
-  [v0.5.3](docs/release-notes/v0.5.3.md) ·
+  ([v0.5.6](docs/release-notes/v0.5.6.md) · [v0.5.5](docs/release-notes/v0.5.5.md) ·
+  [v0.5.4](docs/release-notes/v0.5.4.md) · [v0.5.3](docs/release-notes/v0.5.3.md) ·
   [v0.5.2](docs/release-notes/v0.5.2.md) · [v0.5.1](docs/release-notes/v0.5.1.md) ·
   [v0.5.0](docs/release-notes/v0.5.0.md) · [v0.4.0](docs/release-notes/v0.4.0.md) ·
   [v0.3.0](docs/release-notes/v0.3.0.md)).
