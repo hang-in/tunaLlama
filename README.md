@@ -259,7 +259,9 @@ Claude/Codex: tuna_recall(query="BGE-M3 임베딩 사용")
   metric 정의 / 한계
 - [phase4-search.md](docs/measurements/phase4-search.md) - 검색 품질
 - [phase5-hyde-kure.md](docs/measurements/phase5-hyde-kure.md) - HyDE
-  / KURE / Adaptive
+  / KURE / Adaptive (524 record)
+- [phase5e-corpus-scaling.md](docs/measurements/phase5e-corpus-scaling.md) -
+  **rerank pool sweep + 984 record LOPO** (rerank P@1 0.77 / R@5 0.59 cloud 0)
 - [phase7-mcp-audit.md](docs/measurements/phase7-mcp-audit.md) - MCP
   도구 system prompt size
 - [phase7-context-boost.md](docs/measurements/phase7-context-boost.md) -
@@ -310,7 +312,9 @@ resource 미attach 가능. `tuna_load_memory` 명시 호출 시도.
 
 ### 검색 품질이 낮은 것 같음
 
-**현재 측정**: 합성 시드 기반 R@5 0.5 / σR@5 0.22 ~ 0.16 (HyDE 적용).
+**현재 측정** (cloud 0 path, 984 record LOPO / 792 query): rerank P@1 0.77 /
+R@5 0.59 / σR@5 0.31. HyDE+KURE path (24 leader sample, cloud 1): P@1 0.92 /
+σR@5 0.14. 자세히: [phase5e-corpus-scaling.md](docs/measurements/phase5e-corpus-scaling.md).
 
 **R@5 < 0.8 의 의미**: 자동 prepend (`auto_recall=always`) 시 noise 섞임
 가능. 단 Phase 4-4 + 5-3 측정에서 cloud LLM 이 무관 prefix 자동 무시 -
