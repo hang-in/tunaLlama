@@ -180,6 +180,68 @@ def test_lopo_local_paths(big_store, capsys):
     assert rerank_ndcg >= hybrid_ndcg - 0.05
 
 
+# ---------------- Test 1b: rerank candidate_pool sweep (D) ----------------
+
+def test_lopo_rerank_pool_sweep(big_store, capsys):
+    """rerank 의 candidate_pool 20 vs 50 vs 100 sweep, full 432 query.
+
+    Phase 5-2C 의 24 group leader sample 에서 candidate_pool=50 P@1 0.54
+    측정됐었음. full LOPO 432 query 로 sweep 해 가장 가성비 좋은 pool 결정.
+    cloud 호출 0.
+    """
+    pools = [20, 50, 100]
+    by_pool: dict[int, list[RetrievalMetrics]] = {p: [] for p in pools}
+    ndcg_by_pool: dict[int, list[float]] = {p: [] for p in pools}
+
+    for g_idx, phrases in enumerate(ALL_GROUPS):
+        all_grp = _group_ids(g_idx)
+        for p_idx, query in enumerate(phrases):
+            holdout = _holdout_id(g_idx, p_idx)
+            relevant = all_grp - {holdout}
+            for pool in pools:
+                rr = _filter_holdout(
+                    [
+                        s.full_id
+                        for s in recall_reranked(
+                            big_store, query, limit=20,
+                            candidate_pool=pool, base="hybrid",
+                        ).snippets
+                    ],
+                    holdout,
+                )
+                by_pool[pool].append(compute_metrics(rr, relevant))
+                ndcg_by_pool[pool].append(ndcg_at_k(rr, relevant))
+
+    with capsys.disabled():
+        n = sum(len(g) for g in ALL_GROUPS)
+        print(
+            f"\n\n=== Phase 5-D rerank candidate_pool sweep "
+            f"(seed {TOTAL_RECORDS} record, {n} query / pool) ==="
+        )
+        print(
+            f"{'pool':<10}{'P@1':>8}{'R@5':>8}{'MRR':>8}"
+            f"{'NDCG@5':>10}{'σP@1':>8}{'σR@5':>8}"
+        )
+        print("-" * 60)
+        for pool in pools:
+            ms = by_pool[pool]
+            avg = average_metrics(ms)
+            sp1 = (
+                statistics.stdev([x.p1 for x in ms])
+                if len(ms) > 1 else 0.0
+            )
+            sr5 = (
+                statistics.stdev([x.r_at_k for x in ms])
+                if len(ms) > 1 else 0.0
+            )
+            ndcg = statistics.mean(ndcg_by_pool[pool])
+            print(
+                f"{pool:<10}{avg.p1:>8.2f}{avg.r_at_k:>8.2f}{avg.mrr:>8.2f}"
+                f"{ndcg:>10.2f}{sp1:>8.2f}{sr5:>8.2f}"
+            )
+        print()
+
+
 # ---------------- Test 2: expanded path sample ----------------
 
 @pytest.fixture(scope="module")

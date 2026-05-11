@@ -251,6 +251,18 @@ context boost +0.60, adversarial damage +0.11
 **production default 추천**: gemma4:31b (절대값 + robustness 우세).
 latency 우선 시 qwen3-coder-next.
 
+## Round 19 - 2026-05-11 · 1k corpus 시드 합성 · glm-4.7 · `tuna_general_task`
+
+- 채널: `tuna_general_task` (round 16/17 패턴 그대로 - dev_review 흐름 회피).
+- 위임: 60 신규 task × 6 paraphrase + 100 noise. 카테고리: mobile_dev /
+  web_frontend / backend_api / ml_inference / observability / data_pipeline.
+- 결과: ✓ 정상 bounded data 출력. 함수 정의 / pytest / mock 0. round
+  16/17 패턴 일관.
+- 차용: `tests/integration/seeds/extended_1k.py` 에 NEW_GROUPS_60_v2 +
+  NOISE_100_v2. ALL_GROUPS_132 = 기존 72 + 신규 60 = 984 record (132*6+192).
+- **첫 organic metric 자동 적재**: 이 round 의 호출이 v0.5.7 hook 으로
+  metrics.db 에 자동 기록 → Phase 6-4 의 source="organic" tag 가 실데이터.
+
 ## Round 18 - 2026-05-11 · v0.5.x patch cycle + organic metric infrastructure
 
 - 채널: 사용자 ↔ Claude Code direct session (도구 위임 X). 1 일+ 작업으로
