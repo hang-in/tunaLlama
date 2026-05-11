@@ -202,24 +202,34 @@ Full 13-tool list: [docs/internals.md](docs/internals.md#mcp-tools).
   `spawn_agent` types only includes default / explorer / worker. Claude
   Code side not yet measured. The 13 MCP tools work in both; delegation
   happens at the tool layer.
-- **MCP resource auto-attach does NOT work** (both environments live-
-  tested): `tunallama://memory/state` is not attached at session start
-  on either Claude Code or Codex CLI. v0.5.2 adds a SessionStart hook
-  (`plugin/hooks/session_start.py`) to prepend state.md content via
-  stdout - client support varies. Fallback: architect calls
-  `tuna_load_memory` once per session.
+- **MCP resource auto-attach + SessionStart hook do NOT work** (both
+  environments live-tested): `tunallama://memory/state` is not attached
+  at session start on either client; v0.5.2's SessionStart hook
+  (`plugin/hooks/session_start.py`) is also not picked up (sentinel test
+  confirmed manual state entry doesn't reach the architect context in
+  a fresh session). **Recommended operation**: architect reads docs
+  directly, or the user explicitly says "call `tuna_load_memory` first."
 
-### Cross-environment behavior matrix (v0.5.2)
+### Cross-environment behavior matrix (v0.5.3, Claude Code 2.1.138 + Codex CLI 0.128.0)
 
-| Item | Claude Code | Codex CLI 0.128.0 |
+| Item | Claude Code | Codex CLI |
 |---|---|---|
 | MCP tools 13 (tool calls) | ✓ | ✓ |
 | DB sharing (`~/.tunallama/memory.db`) | ✓ | ✓ |
 | state.md sharing (`~/.tunallama/projects/<hash>/state.md`) | ✓ | ✓ |
 | Explicit `tuna_load_memory` / `tuna_recall` | ✓ | ✓ |
 | **MCP resource auto-attach** | ✗ | ✗ |
-| **SessionStart hook (state.md prepend)** | client-dependent | client-dependent |
-| **Subagent auto-discovery** | ? (not measured) | ✗ |
+| **SessionStart hook (state.md prepend)** | ✗ (sentinel test) | ✗ |
+| **Subagent auto-discovery** | ✗ | ✗ |
+
+### Recommended operation
+
+When state.md auto-attach / SessionStart hook are unavailable:
+- Architect (Claude / Codex) reads docs (README / CONTRIBUTING /
+  docs/workflow.md) directly to grasp conventions - **works well in
+  practice**.
+- Or user explicitly says "call `tuna_load_memory` first" at session start.
+- v0.6.0 candidate: upstream client PR or alternative workaround.
 
 - **state.md auto-extract false positives**. v0.5.1 strips code-block
   contents and filters tokens by meaningfulness - not 100% eliminated.

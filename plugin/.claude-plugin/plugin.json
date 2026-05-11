@@ -1,10 +1,26 @@
 {
   "name": "tunaLlama",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Delegate heavy code generation to a local LLM (Ollama / LM Studio). Search + memory layer + Codex CLI compatibility (one repo / two environments).",
   "author": {
     "name": "d9ng (hang-in)",
     "url": "https://github.com/hang-in/tunaLlama"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "homepage": "https://github.com/hang-in/tunaLlama",
+  "repository": "https://github.com/hang-in/tunaLlama",
+  "keywords": [
+    "mcp",
+    "claude-code",
+    "codex-cli",
+    "ollama",
+    "lmstudio",
+    "code-generation",
+    "memory",
+    "search",
+    "bge-m3",
+    "kiwi"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
 }

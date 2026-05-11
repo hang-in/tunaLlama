@@ -201,23 +201,32 @@ Claude/Codex: tuna_recall(query="BGE-M3 임베딩 사용")
   `tuna-developer` 등록 안 됨 (default / explorer / worker 만). Claude Code
   측은 미실측. MCP tools 13 개는 양쪽 모두 정상 작동 - delegation 은 도구
   레벨에서 가능.
-- **MCP resource auto-attach 미작동** (양 환경 실측): `tunallama://memory/state`
-  resource 가 세션 시작 시 자동 첨가 안 됨. Claude Code / Codex CLI 둘 다
-  검증됨. v0.5.2 부터 **SessionStart hook** (`plugin/hooks/session_start.py`)
-  으로 우회 - 단 클라이언트 측 hook 지원 여부에 따라 작동 편차 가능. fallback:
-  architect 가 세션 시작 시 `tuna_load_memory` 명시 호출.
+- **MCP resource auto-attach + SessionStart hook 미작동** (양 환경 실측):
+  `tunallama://memory/state` resource 가 세션 시작 시 자동 첨가 안 됨.
+  v0.5.2 의 SessionStart hook (`plugin/hooks/session_start.py`) 도 양
+  클라이언트 모두 미인식 (sentinel 실측 - state.md 의 manual entry 가 새
+  session 의 architect 컨텍스트에 도달 X). **실제 권장 운영**: architect 가
+  docs 직접 읽거나 사용자가 `tuna_load_memory` 명시 호출 안내.
 
-### 양 환경 동작 매트릭스 (v0.5.2 실측 기준)
+### 양 환경 동작 매트릭스 (v0.5.3 실측 - Claude Code 2.1.138 + Codex CLI 0.128.0)
 
-| 항목 | Claude Code | Codex CLI 0.128.0 |
+| 항목 | Claude Code | Codex CLI |
 |---|---|---|
 | MCP tools 13 개 (도구 호출) | ✓ | ✓ |
 | DB 공유 (`~/.tunallama/memory.db`) | ✓ | ✓ |
 | state.md 공유 (`~/.tunallama/projects/<hash>/state.md`) | ✓ | ✓ |
 | `tuna_load_memory` / `tuna_recall` 명시 호출 | ✓ | ✓ |
 | **MCP resource auto-attach** | ✗ | ✗ |
-| **SessionStart hook (state.md prepend)** | 클라이언트 지원 시 | 클라이언트 지원 시 |
-| **Subagent auto-discovery** | ? (미실측) | ✗ |
+| **SessionStart hook (state.md prepend)** | ✗ (sentinel 실측) | ✗ |
+| **Subagent auto-discovery** | ✗ | ✗ |
+
+### 권장 운영 모델
+
+state.md auto-attach / SessionStart hook 미작동 시 fallback:
+- Architect (Claude / Codex) 가 docs (README / CONTRIBUTING / docs/workflow.md 등)
+  직접 읽어 컨벤션 파악 - **실측에서 작동 잘 함**.
+- 또는 사용자가 첫 turn 에 "`tuna_load_memory` 호출해서 state.md 보여줘" 명시 안내.
+- v0.6.0 후보: 클라이언트 측 hook 인식 PR 또는 다른 우회.
 
 - **state.md auto-extract false positive 위험**. v0.5.1 에서 코드 블록
   안 텍스트 skip + meaningful 토큰 검증으로 완화 - 단 100% 제거는 어려움.
@@ -342,9 +351,9 @@ mise run test                   # pytest (unit + plugin only)
 - [docs/specs/](docs/specs/) - Phase 별 spec 문서.
 - [docs/dogfooding-log.md](docs/dogfooding-log.md) - 라운드별 dogfooding 결과.
 - [docs/release-notes/](docs/release-notes/) - 릴리즈 노트
-  ([v0.5.2](docs/release-notes/v0.5.2.md) · [v0.5.1](docs/release-notes/v0.5.1.md) ·
-  [v0.5.0](docs/release-notes/v0.5.0.md) · [v0.4.0](docs/release-notes/v0.4.0.md) ·
-  [v0.3.0](docs/release-notes/v0.3.0.md)).
+  ([v0.5.3](docs/release-notes/v0.5.3.md) · [v0.5.2](docs/release-notes/v0.5.2.md) ·
+  [v0.5.1](docs/release-notes/v0.5.1.md) · [v0.5.0](docs/release-notes/v0.5.0.md) ·
+  [v0.4.0](docs/release-notes/v0.4.0.md) · [v0.3.0](docs/release-notes/v0.3.0.md)).
 - [CHANGELOG.md](CHANGELOG.md) - 변경 이력.
 - [CONTRIBUTING.md](CONTRIBUTING.md) - 기여 가이드.
 - [config.example.toml](config.example.toml) - config 필드 + 주석.
