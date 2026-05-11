@@ -3,7 +3,7 @@
 [![CI](https://github.com/hang-in/tunaLlama/actions/workflows/ci.yml/badge.svg)](https://github.com/hang-in/tunaLlama/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Status: production](https://img.shields.io/badge/status-production-brightgreen.svg)](#)
+[![Status: usable beta](https://img.shields.io/badge/status-usable%20beta-yellow.svg)](#)
 [![Tests: 506 passing](https://img.shields.io/badge/tests-506%20passing-brightgreen.svg)](#)
 [![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
 [![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
@@ -16,7 +16,16 @@ Ollama Cloud; decomposition and verification stay with the architect
 Code and Codex CLI** - Codex CLI also reads
 `.claude-plugin/marketplace.json`.
 
-**Status**: **v0.5.0 production release** (2026-05-11). Verified on both Claude Code and Codex CLI.
+tunaLlama is not a prompt seed or AGENTS.md template. Rather than having
+the upper-model session absorb every doc and long code block directly,
+it is an **MCP-based delegation runtime that hands long code generation
+off to a local/low-cost LLM so the Architect can focus on decomposition
+and verification**.
+
+**Status**: **v0.5.x usable dogfooding release** (2026-05-11). MCP tool
+invocation is verified on both Claude Code and Codex CLI, but organic
+dogfooding measurement and external-user reproducibility are still being
+collected.
 **License**: [MIT](LICENSE). **Korean**: [README.md](README.md) (canonical).
 
 ---
@@ -28,9 +37,12 @@ Code and Codex CLI** - Codex CLI also reads
 - Users with Ollama local / Ollama Cloud / LM Studio available
 - Users working with Korean (Kiwi morphological tokenizer integrated)
 
-That said, actual value is best confirmed by your own dogfooding.
-Token-quota savings are anecdotal - Anthropic / OpenAI quota formulas
-are not public, so quantitative measurement is not possible.
+Actual quota-savings depend on your task mix, model choice, provider
+latency, and the Architect's verification style. Anthropic / OpenAI
+quota formulas are not public, so tunaLlama does not promise a
+"guaranteed token saving" - it provides **a structure for delegating
+long generation so the upper-model's usage can be reduced**. Confirm
+real value via your own dogfooding.
 
 ### Requirements
 
@@ -51,11 +63,14 @@ Typical call flow:
 1. User asks for a task (Korean / English).
 2. Architect decomposes - short task uses `tuna_dev_review`, longer
    ones go through a spec doc then `tuna_dev_review_from_spec`.
-3. Backend runs generate → review → fix loop automatically. Every
-   call lands in SQLite indexed by Korean morphemes.
+3. Backend runs a generate → review → fix loop (bounded delegation -
+   terminates on review pass or max iter). Every call lands in SQLite
+   indexed by Korean morphemes.
 4. **Real value of search**: architect fetches context that the
-   mid-size local LLM lacks (Opus + Sonnet subagent pattern).
-   Phase 7-2 measured context boost +0.58 ~ +0.64 across 3 models.
+   mid-size local LLM lacks (Opus + Sonnet subagent pattern). Phase 7-2
+   **measured on synthetic seeds**: context boost +0.58 ~ +0.64 across
+   3 models. This is not a real-usage validated number; organic
+   dogfooding metrics are collected separately.
 5. Architect verifies the result and returns it.
 
 Detailed workflow: [docs/workflow.md](docs/workflow.md).
@@ -135,18 +150,22 @@ Details: [docs/specs/phase8_codex.md](docs/specs/phase8_codex.md).
 
 ## First call
 
-After install, in a Claude Code / Codex session:
+After install, in a Claude Code / Codex session. The Architect can
+invoke these tools on its own, but **explicit invocation is recommended**
+for first use and reproducible workflows.
 
-### Delegate code generation
+### Recommended flow - delegate code generation
 
 ```
-You: "write a json parsing function"
+You: "write a json parsing function.
+      first run tuna_load_memory for project conventions,
+      then delegate via tuna_dev_review."
 
-Claude/Codex automatically:
+Architect:
 1. tuna_load_memory()  ← fetch project conventions
 2. tuna_recall(query="json parsing")  ← surface past similar work (opt)
-3. tuna_generate_code(requirements="...", language="python")
-   → local LLM generates code
+3. tuna_dev_review(requirements="...", language="python")
+   → local LLM runs generate → review → fix loop
 4. Architect verifies and returns to you
 ```
 
@@ -155,17 +174,17 @@ Claude/Codex automatically:
 ```
 You write a spec at docs/specs/foo.md, then:
 
-Claude/Codex: tuna_dev_review_from_spec("docs/specs/foo.md")
-→ backend auto-loops generate → review → fix
+You: "run tuna_dev_review_from_spec on docs/specs/foo.md"
+
+→ backend runs bounded generate → review → fix loop
 → returns final code + iteration log
 ```
 
 ### Memory search
 
 ```
-You: "how did this project use BGE-M3 embeddings?"
+You: "use tuna_recall to search how this project used BGE-M3 embeddings"
 
-Claude/Codex: tuna_recall(query="BGE-M3 embedding usage")
 → surfaces top-5 past calls
 ```
 
@@ -173,45 +192,72 @@ Full 13-tool list: [docs/internals.md](docs/internals.md#mcp-tools).
 
 ## Limitations
 
-- **Production** (v0.5.0). Verified on both Claude Code and Codex CLI.
-  Caveat: no organic everyday-use measurement yet.
+**v0.5.x usable dogfooding release**. MCP tool invocation is verified on
+both Claude Code and Codex CLI, but organic dogfooding (everyday use)
+measurement is still being collected. Below organized by category:
+
+### 1. Usage / cost
+
 - **Quota savings are anecdotal**. Anthropic / OpenAI formulas not
   public; quantitative measurement not possible.
-- **Search measurements (R@5, P@1, etc.) synthetic-seed based**.
+- **MCP tool system prompt cost is an intended trade-off**. The 13
+  tools' descriptions + schemas are prepended to the system prompt
+  every conversation (estimated ~1.6k tokens). This is not accidental
+  context bloat; it is the affordance cost that lets the Architect
+  pick the right delegation tool. tunaLlama manages tool count and
+  description quality rather than removing this cost. Details:
+  [docs/measurements/phase7-mcp-audit.md](docs/measurements/phase7-mcp-audit.md).
+
+### 2. Measurement
+
+- **Search measurements (R@5, P@1, etc.) measured on synthetic seeds**.
   Real-user workflow validation separate. Details:
   [docs/measurements/](docs/measurements/).
-- **MCP auto-invocation dependent**. Users rarely call `tuna_*` tools
-  explicitly; the architect decides based on task context. Tool
-  description quality determines auto-invocation appropriateness.
-- **Local LLM dependent**. No Ollama etc. means no work.
-- **Korean morphology = Kiwi-dependent**. Domain words Kiwi can't
-  handle (new slang, jargon) may impact search quality.
-- **Organic dogfooding metrics auto-collected** (v0.5.7+). Each
-  delegation lands 4 metrics (`standalone_toy_rate` /
-  `convention_adherence_rate` / `ast_excess_score` /
-  `syntactically_valid`) in `~/.tunallama/metrics.db`. View with
-  `tunallama metrics show`. Disable: `TUNA_ORGANIC_METRICS=0`.
-- **MCP tool system prompt cost**. 13 tools' description + schema
-  prepended to system prompt every conversation. Estimated ~1633
-  tokens. Details:
-  [docs/measurements/phase7-mcp-audit.md](docs/measurements/phase7-mcp-audit.md).
+- **Organic dogfooding metrics** (v0.5.7+). Each delegation records 4
+  metrics (`standalone_toy_rate` / `convention_adherence_rate` /
+  `ast_excess_score` / `syntactically_valid`) into
+  `~/.tunallama/metrics.db`. View with `tunallama metrics show`.
+  Disable: `TUNA_ORGANIC_METRICS=0`. External-user reproducibility is
+  still being collected.
 - **Test coverage 90%** (475 unit/plugin tests). Most of the missing
   10% is external-service-dependent code paths (`llm/ollama.py` 62% /
-  `llm/lmstudio.py` 58% - covered when `pytest -m integration` runs
-  against live services). `token_count.py` 34% is the deferred
-  Phase 5-4 module (no Anthropic API access here).
+  `llm/lmstudio.py` 58% - covered when `pytest -m integration` runs).
+  `token_count.py` 34% is the deferred Phase 5-4 module.
+
+### 3. MCP / client compatibility
+
+- **Architect-invocation dependent**. `tuna_*` tools are called by the
+  Architect based on task context - description quality determines
+  hit rate. **Explicit invocation recommended** for first use and
+  reproducible workflows.
 - **Subagent auto-discovery does NOT work** (Codex 0.128.0 live test):
   `plugin/agents/tuna-developer.toml` is cached but Codex's
-  `spawn_agent` types only includes default / explorer / worker. Claude
-  Code side not yet measured. The 13 MCP tools work in both; delegation
-  happens at the tool layer.
-- **MCP resource auto-attach + SessionStart hook do NOT work** (both
-  environments live-tested): `tunallama://memory/state` is not attached
-  at session start on either client; v0.5.2's SessionStart hook
-  (`plugin/hooks/session_start.py`) is also not picked up (sentinel test
-  confirmed manual state entry doesn't reach the architect context in
-  a fresh session). **Recommended operation**: architect reads docs
-  directly, or the user explicitly says "call `tuna_load_memory` first."
+  `spawn_agent` types only includes default / explorer / worker.
+  Claude Code side not yet measured. The 13 MCP tools work on both;
+  delegation happens at the tool layer.
+- **MCP resource auto-attach + SessionStart hook**:
+  `tunallama://memory/state` is not attached at session start on either
+  client. v0.5.2's SessionStart hook works on Claude Code v0.5.5+ but
+  Codex does not honor it. **Recommended operation**: Claude Code uses
+  the hook for state.md auto-prepend; on Codex the user calls
+  `tuna_load_memory` explicitly.
+
+### 4. Local LLM / provider
+
+- **Local LLM dependent**. No Ollama / LM Studio / Ollama Cloud means
+  no work.
+
+### 5. Search / memory quality
+
+- **Korean morphology = Kiwi-dependent**. Domain words Kiwi can't
+  handle (new slang, jargon) may impact search quality.
+
+### 6. state.md auto-extract
+
+- **state.md auto-extract false positives**. v0.5.1 strips code-block
+  contents and filters tokens by meaningfulness - not 100% eliminated.
+  Use `tunallama state clean` (delete auto entries) or edit directly
+  (`tunallama state path` for the path).
 
 ### Cross-environment behavior matrix (v0.5.6, Claude Code 2.1.138 + Codex CLI 0.128.0)
 
@@ -239,10 +285,17 @@ Full 13-tool list: [docs/internals.md](docs/internals.md#mcp-tools).
   explicitly at the first turn, or fetches docs directly.
 - DB / state.md sharing and MCP tool invocation work fine.
 
-- **state.md auto-extract false positives**. v0.5.1 strips code-block
-  contents and filters tokens by meaningfulness - not 100% eliminated.
-  Use `tunallama state clean` (delete auto entries) or edit directly
-  (`tunallama state path` for the path).
+## Why not a prompt seed
+
+tunaLlama does not try to solve the context limit by making the agent
+read more docs. Instead it slices work into small units, hands them off
+to a local/low-cost LLM via MCP tools, and lets the upper-model Architect
+focus on short specs, review results, and final diff judgment.
+
+Doc-driven operating rules drift over time, creating stale state and
+lost-in-the-middle problems. tunaLlama avoids that by recording
+delegation calls into SQLite and providing a runtime layer that
+retrieves them when needed.
 
 ## What this is not
 
@@ -261,7 +314,10 @@ Search algorithm / context boost / MCP audit:
   metric definitions / known limits
 - [phase4-search.md](docs/measurements/phase4-search.md) - search quality
 - [phase5-hyde-kure.md](docs/measurements/phase5-hyde-kure.md) - HyDE /
-  KURE / Adaptive
+  KURE / Adaptive (524 record)
+- [phase5e-corpus-scaling.md](docs/measurements/phase5e-corpus-scaling.md) -
+  **rerank pool sweep + 984 record LOPO** (rerank P@1 0.77 / R@5 0.59,
+  cloud 0)
 - [phase7-mcp-audit.md](docs/measurements/phase7-mcp-audit.md) - MCP
   tool system prompt size
 - [phase7-context-boost.md](docs/measurements/phase7-context-boost.md) -
@@ -314,8 +370,10 @@ Explicitly say "use `tuna_dev_review` to write this".
 
 ### Search quality feels low
 
-**Current measurement**: synthetic seed R@5 0.5 / σR@5 0.22-0.16
-(with HyDE).
+**Current measurement** (cloud 0 path, 984 record LOPO / 792 queries):
+rerank P@1 0.77 / R@5 0.59 / σR@5 0.31. HyDE+KURE path (24 leader
+sample, cloud 1): P@1 0.92 / σR@5 0.14. Details:
+[phase5e-corpus-scaling.md](docs/measurements/phase5e-corpus-scaling.md).
 
 **R@5 < 0.8 implication**: auto-prepend (`auto_recall=always`) may
 mix in noise. Phase 4-4 + 5-3 measured cloud LLM ignoring irrelevant
