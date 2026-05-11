@@ -1,5 +1,11 @@
 """MMR (Maximal Marginal Relevance) - 다양성/관련성 균형 reranking.
 
+**STATUS (Phase 5-2D abandoned, 2026-05-11)**: 우리 use case (relevant 가
+paraphrase set) 에서 anti-pattern 으로 확인됨. λ ≤ 0.5 면 R@5 급락 (같은
+task paraphrase 들을 다양성 명목으로 떨어뜨림). 측정 자산 + 알고리즘 자산
+보존 위해 코드 / public function 유지. 새 use case (긴 document + 무관
+후보 다수) 에는 가치 있음. 자세한 측정: docs/measurements/phase5-hyde-kure.md.
+
 Carbonell & Goldstein (1998). 검색 후보들 중 query 와 관련성 + 이미 선택된
 결과들과의 다양성 (low similarity) 동시 고려.
 
@@ -8,10 +14,6 @@ Carbonell & Goldstein (1998). 검색 후보들 중 query 와 관련성 + 이미 
     s ∈ already_selected
 
 λ=1.0 -> 순수 관련성 (변화 없음). λ=0.5 -> 균형. λ=0.0 -> 순수 다양성.
-
-R@5 회복 + σ 감소 위해 도입. 짧은 record 환경에서 top-5 가 같은 task 의
-거의 동일한 표현으로 채워지면 R@5 가 정체. MMR 로 다른 paraphrase 끌어올려
-R@5 ↑.
 
 cloud 호출 0. 코사인 유사도는 BGE-M3 임베딩 직접 사용.
 """

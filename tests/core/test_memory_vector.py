@@ -142,7 +142,7 @@ def test_search_vectors_orders_by_cosine(store, patched_embed):
         tool_name="t", inputs={"q": "alpha alpha"}, output="x",
         model="m", duration_ms=1,
     )
-    far = store.record_call(
+    store.record_call(
         tool_name="t", inputs={"q": "beta beta"}, output="x",
         model="m", duration_ms=1,
     )
@@ -153,7 +153,7 @@ def test_search_vectors_orders_by_cosine(store, patched_embed):
 
 
 def test_search_vectors_filters_by_project_root(store, patched_embed):
-    a = store.record_call(
+    store.record_call(
         tool_name="t", inputs={"q": "alpha"}, output="x",
         model="m", duration_ms=1, project_root="/p1",
     )

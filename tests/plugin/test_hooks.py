@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import io
 import json
-import sys
 
-import pytest
 
 from plugin.hooks.pre_tool_use import _DEFAULT_THRESHOLD_BYTES, evaluate, main
 

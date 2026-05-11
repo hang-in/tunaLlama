@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from tunallama_core.cli.init_cmd import run_init
 

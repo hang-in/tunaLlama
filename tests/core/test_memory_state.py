@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import hashlib
 
 import pytest
 
 from tunallama_core.memory.state import (
-    DEFAULT_MAX_BYTES,
     SECTION_ANTIPATTERNS,
     SECTION_CONSTRAINTS,
     SECTION_CONVENTIONS,

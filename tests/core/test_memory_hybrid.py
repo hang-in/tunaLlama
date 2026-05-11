@@ -117,10 +117,10 @@ def test_limit_truncates_top(store):
 
 
 def test_total_matches_counts_unique_ids(store):
-    rid_a = store.record_call(
+    store.record_call(
         tool_name="t", inputs={"q": "alpha"}, output="x", model="m", duration_ms=1
     )
-    rid_b = store.record_call(
+    store.record_call(
         tool_name="t", inputs={"q": "beta"}, output="y", model="m", duration_ms=1
     )
     r = recall_hybrid(store, "alpha", limit=10)

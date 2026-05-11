@@ -32,9 +32,12 @@ def test_mcp_json_registers_server():
     p = PLUGIN_ROOT / ".mcp.json"
     data = json.loads(p.read_text(encoding="utf-8"))
     server = data["mcpServers"]["tunallama"]
-    # 절대경로로 venv python 을 가리켜야 PATH 무관하게 동작.
-    assert server["command"].endswith(".venv/bin/python")
+    # Phase audit: 절대경로 하드코딩 제거 (다른 사용자 환경 호환).
+    # 사용자가 venv 활성화 또는 PATH 에 python 둔 상태에서 cwd=plugin_root/..
+    # 로 spawn.
+    assert server["command"] == "python"
     assert server["args"] == ["-m", "plugin.mcp_server"]
+    assert "${CLAUDE_PLUGIN_ROOT}" in server.get("cwd", "")
 
 
 def test_skill_file_exists_with_frontmatter():

@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .search import RecallResult, recall, recall_hybrid, recall_reranked
+from .search import RecallResult, recall, recall_reranked
 from .store import MemoryStore
 
 _HANGUL_RE = re.compile(r"[가-힣]")

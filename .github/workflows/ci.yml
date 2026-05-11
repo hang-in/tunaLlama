@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install project
+        run: |
+          uv venv
+          uv pip install -e ".[dev]"
+        env:
+          UV_LINK_MODE: copy
+
+      - name: Ruff (lint)
+        run: .venv/bin/ruff check tunallama_core plugin tests
+
+      - name: Pytest (unit + plugin only, no search_quality / no integration)
+        run: |
+          .venv/bin/pytest --no-cov -q -m "not search_quality and not integration"
+        env:
+          # 통합 / 측정 마커는 CI 에서 제외 (BGE-M3 / Ollama / cloud 의존).
+          PYTHONDONTWRITEBYTECODE: "1"

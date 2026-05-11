@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from tunallama_core.memory.extract import (
     ExtractedEntry,
@@ -19,7 +18,6 @@ from tunallama_core.memory.state import (
     SECTION_CONSTRAINTS,
     SECTION_CONVENTIONS,
     SECTION_DECISIONS,
-    StateEntry,
     StateFile,
 )
 

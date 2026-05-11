@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-import pytest
 
 from tunallama_core.llm.base import ChatResponse, LLMClient
 from tunallama_core.memory.diff_learn import (

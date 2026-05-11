@@ -9,7 +9,6 @@ import pytest
 from tunallama_core.llm.base import ChatResponse, LLMClient
 from tunallama_core.memory.store import MemoryStore
 from tunallama_core.workflow.dev_review import (
-    DevReviewResult,
     dev_review_from_spec,
     dev_review_loop,
 )

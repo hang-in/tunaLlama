@@ -260,57 +260,82 @@ def dev_review_loop(
 
     iterations: list[IterationResult] = []
     for i in range(1, max_iterations + 1):
-        # review 단계는 _runner 직접 호출 — REVIEW_SCHEMA 를 강제해 sampling 단계
-        # 에서 JSON 형식을 보장. review_code 도구는 freeform 그대로 유지(단독 호출자
-        # UX 변경 없음).
-        review_user = (
-            f"Focus: {review_focus}\n\n```\n{code}\n```"
-            if review_focus
-            else f"```\n{code}\n```"
-        )
-        rev = run_delegation(
-            client=client,
-            tool_name="review_code",
-            system_prompt=REVIEW_CODE,
-            user_prompt=review_user,
-            inputs_for_log={"code": code, "focus": review_focus},
-            store=store,
-            project_root=project_root,
-            session_id=session_id,
+        iteration, issues, fixed_code = _run_review_iteration(
+            i, code,
+            client=client, store=store, project_root=project_root,
+            session_id=session_id, review_focus=review_focus,
             recall_prefix=recall_prefix,
-            response_schema=REVIEW_SCHEMA,
+            is_last=(i == max_iterations),
         )
-        issues = _decide_issues(client, rev.text)
-        iterations.append(
-            IterationResult(
-                iteration=i,
-                code=code,
-                review=_format_review_for_log(rev.text),
-                issues_found=issues,
-            )
-        )
+        iterations.append(iteration)
         if not issues:
             return DevReviewResult(
                 final_code=code, iterations=tuple(iterations), converged=True
             )
-        if i == max_iterations:
-            break
-        # JSON review 를 fix_code 에 그대로 넘기면 모델이 schema 까지 따라하려 하므로
-        # human-readable 형식으로 변환해 전달.
-        fix = fix_code(
-            code,
-            _format_review_for_log(rev.text),
-            client=client,
-            store=store,
-            project_root=project_root,
-            session_id=session_id,
-            recall_prefix=recall_prefix,
-        )
-        code = fix.text
+        if fixed_code is None:
+            break  # last iteration - fix 안 수행
+        code = fixed_code
 
     return DevReviewResult(
         final_code=code, iterations=tuple(iterations), converged=False
     )
+
+
+def _run_review_iteration(
+    i: int,
+    code: str,
+    *,
+    client: LLMClient,
+    store: MemoryStore | None,
+    project_root: str | None,
+    session_id: str | None,
+    review_focus: str | None,
+    recall_prefix: str | None,
+    is_last: bool,
+) -> tuple[IterationResult, bool, str | None]:
+    """review (+ fix 옵션) 한 cycle 실행.
+
+    return ``(IterationResult, issues_found, fixed_code_or_None)``.
+    ``is_last`` 면 fix 건너뜀 → fixed_code=None.
+    """
+    review_user = (
+        f"Focus: {review_focus}\n\n```\n{code}\n```"
+        if review_focus
+        else f"```\n{code}\n```"
+    )
+    rev = run_delegation(
+        client=client,
+        tool_name="review_code",
+        system_prompt=REVIEW_CODE,
+        user_prompt=review_user,
+        inputs_for_log={"code": code, "focus": review_focus},
+        store=store,
+        project_root=project_root,
+        session_id=session_id,
+        recall_prefix=recall_prefix,
+        response_schema=REVIEW_SCHEMA,
+    )
+    issues = _decide_issues(client, rev.text)
+    iteration = IterationResult(
+        iteration=i,
+        code=code,
+        review=_format_review_for_log(rev.text),
+        issues_found=issues,
+    )
+    if not issues or is_last:
+        return iteration, issues, None
+    # JSON review 를 fix_code 에 그대로 넘기면 모델이 schema 까지 따라하려 하므로
+    # human-readable 형식으로 변환해 전달.
+    fix = fix_code(
+        code,
+        _format_review_for_log(rev.text),
+        client=client,
+        store=store,
+        project_root=project_root,
+        session_id=session_id,
+        recall_prefix=recall_prefix,
+    )
+    return iteration, issues, fix.text
 
 
 def dev_review_from_spec(

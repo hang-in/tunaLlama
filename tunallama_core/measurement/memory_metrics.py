@@ -13,8 +13,6 @@ from dataclasses import dataclass
 from typing import Literal
 
 from ..memory.state import (
-    SECTION_ANTIPATTERNS,
-    SECTION_CONSTRAINTS,
     SECTION_CONVENTIONS,
     StateFile,
 )

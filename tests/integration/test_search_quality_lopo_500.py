@@ -18,7 +18,6 @@ from __future__ import annotations
 import math
 import os
 import statistics
-from pathlib import Path
 
 import pytest
 

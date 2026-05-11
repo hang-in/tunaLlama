@@ -143,7 +143,7 @@ def test_recall_reranked_uses_reranker(monkeypatch, store):
         tool_name="t", inputs={"q": "alphabet"}, output="x",
         model="m", duration_ms=1,
     )
-    rid_b = store.record_call(
+    store.record_call(
         tool_name="t", inputs={"q": "zulu"}, output="x",
         model="m", duration_ms=1,
     )

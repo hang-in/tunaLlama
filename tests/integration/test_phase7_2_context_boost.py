@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 import os
 import time
-from dataclasses import asdict
 
 import pytest
 
@@ -177,7 +176,7 @@ def test_context_boost_per_mode(cloud_client, capsys, tmp_path):
         print("--- per-probe id_hit rate (relevant vs none diff) ---")
         print(f"{'probe':<22}{'none':>8}{'relevant':>10}{'mixed':>8}{'adv':>8}")
         for probe in PROBES:
-            row = [probe["id"]]
+            [probe["id"]]
             cells_n = by_cell.get((probe["id"], "none"), {})
             cells_r = by_cell.get((probe["id"], "relevant"), {})
             cells_m = by_cell.get((probe["id"], "mixed"), {})

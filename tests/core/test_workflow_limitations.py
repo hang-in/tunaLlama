@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 
-import pytest
 
 from tunallama_core.workflow.limitations import (
     load_limitations,

@@ -44,7 +44,8 @@ def _discover_ollama_models(host: str) -> list[str]:
         from ollama import Client
 
         resp = Client(host=host, timeout=3).list()
-    except Exception:
+    except (ConnectionError, TimeoutError, OSError, ImportError, ValueError):
+        # 서비스 미가용 / 모듈 미설치 - init 첫 실행에서는 silent OK.
         return []
     items = getattr(resp, "models", None) or (
         resp.get("models", []) if isinstance(resp, dict) else []
@@ -68,7 +69,7 @@ def _discover_lmstudio_models(host: str) -> list[str]:
         r = httpx.get(host.rstrip("/") + "/models", timeout=3)
         r.raise_for_status()
         return [x["id"] for x in r.json().get("data", []) if x.get("id")]
-    except Exception:
+    except (httpx.HTTPError, ConnectionError, TimeoutError, OSError, ValueError):
         return []
 
 
@@ -78,7 +79,7 @@ def _pick_or_type(label: str, candidates: list[str], fallback_default: str) -> s
     print(f"\n{label} 에서 발견된 모델 ({len(candidates)}개):")
     for i, m in enumerate(candidates, 1):
         print(f"  {i}) {m}")
-    print(f"  (이름 직접 입력도 가능)")
+    print("  (이름 직접 입력도 가능)")
     raw = _ask("모델 번호 또는 이름", "1")
     if raw.isdigit() and 1 <= int(raw) <= len(candidates):
         return candidates[int(raw) - 1]

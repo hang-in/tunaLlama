@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pytest
 
-from tunallama_core.memory.graph import Edge, rebuild_edges, traverse
+from tunallama_core.memory.graph import rebuild_edges, traverse
 from tunallama_core.memory.store import MemoryStore
 from tunallama_core.memory.vector import EMBEDDING_DIM
 

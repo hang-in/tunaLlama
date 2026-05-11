@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from tunallama_core.measurement.mcp_size import (
     ToolSize,

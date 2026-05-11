@@ -5,7 +5,6 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-import pytest
 
 from tunallama_core.cli.doctor_cmd import (
     check_config,

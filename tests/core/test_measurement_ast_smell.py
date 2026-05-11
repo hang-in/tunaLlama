@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tunallama_core.measurement.ast_smell import CodeSmell, analyze_ast
+from tunallama_core.measurement.ast_smell import analyze_ast
 
 
 def test_empty_code_invalid():

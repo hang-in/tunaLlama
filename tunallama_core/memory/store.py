@@ -265,7 +265,7 @@ class MemoryStore:
             return {}
         placeholders = ",".join("?" * len(ids))
         sql = f"SELECT id, embedding FROM calls WHERE id IN ({placeholders})"
-        out: dict[int, "np.ndarray"] = {}  # type: ignore[name-defined]
+        out: dict = {}  # values are numpy.ndarray (BGE-M3 1024 float32)
         for row in self.conn.execute(sql, list(ids)).fetchall():
             vec = decode_blob(row["embedding"])
             if vec is not None:
