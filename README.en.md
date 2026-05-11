@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Status: production](https://img.shields.io/badge/status-production-brightgreen.svg)](#)
-[![Tests: 487 passing](https://img.shields.io/badge/tests-487%20passing-brightgreen.svg)](#)
+[![Tests: 506 passing](https://img.shields.io/badge/tests-506%20passing-brightgreen.svg)](#)
 [![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
 [![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
 
@@ -186,8 +186,11 @@ Full 13-tool list: [docs/internals.md](docs/internals.md#mcp-tools).
 - **Local LLM dependent**. No Ollama etc. means no work.
 - **Korean morphology = Kiwi-dependent**. Domain words Kiwi can't
   handle (new slang, jargon) may impact search quality.
-- **No organic dogfooding measurement**. Since round 16 no real
-  Claude Code everyday-use measurement (resumed in Phase 6).
+- **Organic dogfooding metrics auto-collected** (v0.5.7+). Each
+  delegation lands 4 metrics (`standalone_toy_rate` /
+  `convention_adherence_rate` / `ast_excess_score` /
+  `syntactically_valid`) in `~/.tunallama/metrics.db`. View with
+  `tunallama metrics show`. Disable: `TUNA_ORGANIC_METRICS=0`.
 - **MCP tool system prompt cost**. 13 tools' description + schema
   prepended to system prompt every conversation. Estimated ~1633
   tokens. Details:

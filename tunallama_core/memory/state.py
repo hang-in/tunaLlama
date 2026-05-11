@@ -118,7 +118,9 @@ def get_project_hash(project_root: str | os.PathLike | None = None) -> tuple[str
 
 
 def state_path_for(project_hash: str, *, base: Path | None = None) -> Path:
-    return (base or DEFAULT_STATE_BASE) / project_hash / "state.md"
+    # base 가 None 이면 매번 env 읽기 - TUNA_STATE_BASE 동적 적용.
+    effective_base = base or _default_state_base()
+    return effective_base / project_hash / "state.md"
 
 
 # ---------------- parser ----------------

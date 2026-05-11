@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Status: production](https://img.shields.io/badge/status-production-brightgreen.svg)](#)
-[![Tests: 487 passing](https://img.shields.io/badge/tests-487%20passing-brightgreen.svg)](#)
+[![Tests: 506 passing](https://img.shields.io/badge/tests-506%20passing-brightgreen.svg)](#)
 [![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
 [![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
 
@@ -186,8 +186,10 @@ Claude/Codex: tuna_recall(query="BGE-M3 임베딩 사용")
 - **로컬 LLM 의존**. Ollama 등 환경 없으면 작동 X.
 - **한국어 형태소 분석 = Kiwi 의존**. Kiwi 가 못 처리하는 도메인 단어
   (신조어, 전문용어) 검색 품질 영향 가능.
-- **organic dogfooding 측정 부재**. Round 16 이후 실 Claude Code 일상 사용
-  측정 X (Phase 6 부터 재개 예정).
+- **organic dogfooding 자동 수집** (v0.5.7+). 매 delegation 후 metric 4종
+  (`standalone_toy_rate` / `convention_adherence_rate` / `ast_excess_score`
+  / `syntactically_valid`) 가 `~/.tunallama/metrics.db` 에 적재.
+  `tunallama metrics show` 로 조회. 비활성: `TUNA_ORGANIC_METRICS=0`.
 - **MCP 도구 system prompt 비용**. 13 도구 description + schema 가 매
   conversation 의 system prompt 에 prepend. 추정 ~1633 tokens (영문
   3.5 char/token 휴리스틱). 자세한 측정:
@@ -358,7 +360,8 @@ mise run test                   # pytest (unit + plugin only)
 - [docs/specs/](docs/specs/) - Phase 별 spec 문서.
 - [docs/dogfooding-log.md](docs/dogfooding-log.md) - 라운드별 dogfooding 결과.
 - [docs/release-notes/](docs/release-notes/) - 릴리즈 노트
-  ([v0.5.6](docs/release-notes/v0.5.6.md) · [v0.5.5](docs/release-notes/v0.5.5.md) ·
+  ([v0.5.7](docs/release-notes/v0.5.7.md) · [v0.5.6](docs/release-notes/v0.5.6.md) ·
+  [v0.5.5](docs/release-notes/v0.5.5.md) ·
   [v0.5.4](docs/release-notes/v0.5.4.md) · [v0.5.3](docs/release-notes/v0.5.3.md) ·
   [v0.5.2](docs/release-notes/v0.5.2.md) · [v0.5.1](docs/release-notes/v0.5.1.md) ·
   [v0.5.0](docs/release-notes/v0.5.0.md) · [v0.4.0](docs/release-notes/v0.4.0.md) ·

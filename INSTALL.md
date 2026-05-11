@@ -103,7 +103,8 @@ claude plugin install tunaLlama@tunallama-local
 
 ### 4-B. Codex CLI 사용자
 
-Codex CLI 0.128.0 기준 - marketplace 와 MCP 가 **별도 메커니즘**. 두 단계 모두 필요.
+Codex CLI 0.128.0 기준 - marketplace 와 MCP, hooks 가 **별도 메커니즘**.
+세 단계 모두 필요 (Claude Code 와 차이).
 
 ```bash
 PLUGIN_ROOT="$(pwd)"
@@ -113,6 +114,17 @@ codex plugin marketplace add "$PLUGIN_ROOT"
 
 # 4-B-2. MCP server 등록 (도구 노출 - 별도 명령)
 codex mcp add tunallama -- "$PLUGIN_ROOT/.venv/bin/python" -m plugin.mcp_server
+
+# 4-B-3. (옵션) SessionStart hook 등록 - state.md 자동 prepend
+# 우리 측 plugin/hooks/hooks.json 은 Codex 가 자동 인식 안 함 (v0.5.6 실측).
+# state.md auto-prepend 원하면 ~/.codex/config.toml 에 다음 섹션 직접 추가:
+cat <<EOF >> ~/.codex/config.toml
+
+[[hooks.SessionStart]]
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "python $PLUGIN_ROOT/plugin/hooks/session_start.py"
+EOF
 ```
 
 등록 확인:
@@ -121,7 +133,11 @@ codex mcp add tunallama -- "$PLUGIN_ROOT/.venv/bin/python" -m plugin.mcp_server
 codex mcp list  # tunallama 가 status=enabled 로 보여야
 ```
 
-**Codex 세션 재시작** - 다음 `codex` 실행부터 도구 활성.
+**Codex 세션 재시작** - 다음 `codex` 실행부터 도구 + (4-B-3 했으면) hook 활성.
+
+미설정 시 fallback: architect 가 첫 turn 에 `tuna_load_memory` 명시 호출 또는
+사용자가 안내. (Codex CLI 0.128.0 의 plugin manifest hooks 자동 인식 미지원
+- v0.6.0 후속 upstream PR 검토 예정.)
 
 ### 5. 첫 호출 검증
 

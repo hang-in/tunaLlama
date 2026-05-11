@@ -41,6 +41,26 @@ def _maybe_extract_to_state(text: str, *, project_root: str | None) -> None:
         )
 
 
+def _maybe_collect_organic_metrics(
+    text: str, *, tool_name: str, project_root: str | None,
+) -> None:
+    """v0.5.7 - 매 delegation 후 organic dogfooding metric 자동 수집.
+
+    standalone_toy_rate / convention_adherence_rate / ast_excess_score /
+    syntactically_valid 가 metrics.db 에 source="organic" 으로 적재.
+    ``TUNA_ORGANIC_METRICS=0`` 이면 skip. 실패해도 silent.
+    """
+    try:
+        from ..measurement.organic import collect_organic_after_delegation
+        collect_organic_after_delegation(
+            text, tool_name=tool_name, project_root=project_root,
+        )
+    except Exception as exc:  # noqa: BLE001
+        _logger.warning(
+            "organic metrics collect failed (delegation unaffected): %s", exc,
+        )
+
+
 @dataclass(frozen=True)
 class DelegationResult:
     text: str
@@ -85,6 +105,9 @@ def run_delegation(
             session_id=session_id,
         )
         _maybe_extract_to_state(resp.text, project_root=project_root)
+        _maybe_collect_organic_metrics(
+            resp.text, tool_name=tool_name, project_root=project_root,
+        )
     return DelegationResult(
         text=resp.text,
         model=resp.model,

@@ -251,6 +251,18 @@ context boost +0.60, adversarial damage +0.11
 **production default 추천**: gemma4:31b (절대값 + robustness 우세).
 latency 우선 시 qwen3-coder-next.
 
+## Round 18 - 2026-05-11 · v0.5.x patch cycle + organic metric infrastructure
+
+- 채널: 사용자 ↔ Claude Code direct session (도구 위임 X). 1 일+ 작업으로
+  v0.5.0 부터 v0.5.7 까지 7 patch 출시. SessionStart hook 작동 검증 완료.
+- 측정 자산: state.md auto-prepend / context-mode 비교 분석 / 외부 audit /
+  Codex CLI 실측.
+- 정직 인지: organic dogfooding metric 부재 인정 → v0.5.7 에서 자동 수집
+  인프라 (`~/.tunallama/metrics.db`) 가동. 이 turn 이후 모든 delegation
+  은 자동 적재 → Round 19+ 부터 baseline 형성.
+- dogfooding 방식 진화: spec → dev_review (round 7-15) → general_task
+  (round 16-17) → **자동 measurement infrastructure** (round 18+).
+
 ## Round 17 - 2026-05-11 · Phase 7-2 probe seed · glm-4.7 · `tuna_general_task`
 
 - 채널: `tuna_general_task` (round 16 패턴 - dev_review_from_spec 의

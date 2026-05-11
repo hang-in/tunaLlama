@@ -10,6 +10,14 @@ from .mcp_size import (
     measure_tools,
     total_estimated_tokens,
 )
+from .organic import (
+    RecordedMetric,
+    clear_metrics,
+    collect_organic_after_delegation,
+    list_metrics,
+    record_metric,
+    summarize_metrics,
+)
 from .memory_metrics import (
     ConventionResult,
     InterventionRecord,
@@ -27,17 +35,23 @@ __all__ = [
     "ConventionResult",
     "InterventionRecord",
     "MetricSample",
+    "RecordedMetric",
     "StateRecallProbe",
     "ToolSize",
     "TokenUsage",
     "analyze_ast",
+    "clear_metrics",
+    "collect_organic_after_delegation",
     "convention_adherence_rate",
     "format_size_table",
+    "list_metrics",
     "measure_delegated",
     "measure_native",
     "measure_tools",
+    "record_metric",
     "standalone_toy_rate",
     "state_recall_rate",
+    "summarize_metrics",
     "total_estimated_tokens",
     "user_intervention_rate",
 ]

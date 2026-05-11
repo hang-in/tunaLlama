@@ -49,6 +49,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="show: 내용 출력 / path: 파일 경로 / clean: auto entry 삭제 (manual / verified 보존)",
     )
 
+    p_metrics = sub.add_parser(
+        "metrics",
+        help="organic dogfooding metric 조회 / 정리 (~/.tunallama/metrics.db)",
+    )
+    p_metrics.add_argument(
+        "action",
+        nargs="?",
+        default="show",
+        choices=["show", "list", "path", "clear"],
+        help="show: 평균/count 표 / list: 최근 entry / path: db 경로 / clear: 삭제",
+    )
+    p_metrics.add_argument(
+        "--source",
+        choices=["organic", "spec_dogfooding", "synthetic"],
+        default=None,
+        help="source 필터 (없으면 전체)",
+    )
+
     return parser
 
 
@@ -67,6 +85,10 @@ def run(argv: list[str] | None = None) -> int:
         from .state_cmd import run_state
 
         return run_state(action=args.action)
+    if args.cmd == "metrics":
+        from .metrics_cmd import run_metrics
+
+        return run_metrics(action=args.action, source=args.source)
     return 0
 
 
