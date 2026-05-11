@@ -208,7 +208,7 @@ Claude/Codex: tuna_recall(query="BGE-M3 임베딩 사용")
   session 의 architect 컨텍스트에 도달 X). **실제 권장 운영**: architect 가
   docs 직접 읽거나 사용자가 `tuna_load_memory` 명시 호출 안내.
 
-### 양 환경 동작 매트릭스 (v0.5.3 실측 - Claude Code 2.1.138 + Codex CLI 0.128.0)
+### 양 환경 동작 매트릭스 (v0.5.4 실측 - Claude Code 2.1.138 + Codex CLI 0.128.0)
 
 | 항목 | Claude Code | Codex CLI |
 |---|---|---|
@@ -216,9 +216,11 @@ Claude/Codex: tuna_recall(query="BGE-M3 임베딩 사용")
 | DB 공유 (`~/.tunallama/memory.db`) | ✓ | ✓ |
 | state.md 공유 (`~/.tunallama/projects/<hash>/state.md`) | ✓ | ✓ |
 | `tuna_load_memory` / `tuna_recall` 명시 호출 | ✓ | ✓ |
+| **Agents auto-discovery** (`tuna-developer`) | **✓** (UI 확인) | ✗ |
+| **Skills auto-load** (`delegate-to-ollama`) | **✓** (UI 확인) | ? |
+| **Hooks 등록** (`SessionStart` / `PreToolUse`) | **✓** (UI 확인) | ? |
+| **SessionStart hook 실 실행 / state.md prepend** | v0.5.4 재검증 중 | ✗ |
 | **MCP resource auto-attach** | ✗ | ✗ |
-| **SessionStart hook (state.md prepend)** | ✗ (sentinel 실측) | ✗ |
-| **Subagent auto-discovery** | ✗ | ✗ |
 
 ### 권장 운영 모델
 
@@ -351,9 +353,10 @@ mise run test                   # pytest (unit + plugin only)
 - [docs/specs/](docs/specs/) - Phase 별 spec 문서.
 - [docs/dogfooding-log.md](docs/dogfooding-log.md) - 라운드별 dogfooding 결과.
 - [docs/release-notes/](docs/release-notes/) - 릴리즈 노트
-  ([v0.5.3](docs/release-notes/v0.5.3.md) · [v0.5.2](docs/release-notes/v0.5.2.md) ·
-  [v0.5.1](docs/release-notes/v0.5.1.md) · [v0.5.0](docs/release-notes/v0.5.0.md) ·
-  [v0.4.0](docs/release-notes/v0.4.0.md) · [v0.3.0](docs/release-notes/v0.3.0.md)).
+  ([v0.5.4](docs/release-notes/v0.5.4.md) · [v0.5.3](docs/release-notes/v0.5.3.md) ·
+  [v0.5.2](docs/release-notes/v0.5.2.md) · [v0.5.1](docs/release-notes/v0.5.1.md) ·
+  [v0.5.0](docs/release-notes/v0.5.0.md) · [v0.4.0](docs/release-notes/v0.4.0.md) ·
+  [v0.3.0](docs/release-notes/v0.3.0.md)).
 - [CHANGELOG.md](CHANGELOG.md) - 변경 이력.
 - [CONTRIBUTING.md](CONTRIBUTING.md) - 기여 가이드.
 - [config.example.toml](config.example.toml) - config 필드 + 주석.
