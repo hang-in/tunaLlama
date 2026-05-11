@@ -174,7 +174,8 @@ Claude/Codex: tuna_recall(query="BGE-M3 임베딩 사용")
 
 ## 한계
 
-- **early beta 단계** (v0.4.0). v0.5.0 부터 production 표기 예정.
+- **production 단계** (v0.5.0). Claude Code + Codex CLI 둘 다 검증. 단
+  organic dogfooding (실 일상 사용) 측정 자산 부재는 인지된 한계.
 - **사용 한도 절약은 체감 데이터**. Anthropic / OpenAI 정액제 한도 계산식이
   비공개라 정량 측정 불가능.
 - **검색 측정값 (R@5, P@1 등) 은 합성 시드 기반**. 실 사용자 워크플로우
@@ -191,6 +192,13 @@ Claude/Codex: tuna_recall(query="BGE-M3 임베딩 사용")
   conversation 의 system prompt 에 prepend. 추정 ~1633 tokens (영문
   3.5 char/token 휴리스틱). 자세한 측정:
   [docs/measurements/phase7-mcp-audit.md](docs/measurements/phase7-mcp-audit.md).
+- **테스트 커버리지 90%** (475 unit/plugin tests). 미커버 10% 의 대부분은
+  외부 서비스 의존 path (`llm/ollama.py` 62% / `llm/lmstudio.py` 58% -
+  통합 테스트 `pytest -m integration` 실행 시 추가 커버). `token_count.py`
+  34% 는 Phase 5-4 보류 모듈 (Anthropic API 미보유라 unit test 없음).
+- **Codex subagent 자동 인식** (`plugin/agents/tuna-developer.toml`) +
+  **`tunallama://memory/state` resource auto-attach** 는 Codex 0.128.0
+  에서 미검증. v0.6.0 후보. MCP 도구 13 개는 정상 작동 확인.
 
 ## 무엇이 아닌가
 
@@ -298,7 +306,9 @@ mise run test                   # pytest (unit + plugin only)
 - [docs/measurements/](docs/measurements/) - 측정 자료.
 - [docs/specs/](docs/specs/) - Phase 별 spec 문서.
 - [docs/dogfooding-log.md](docs/dogfooding-log.md) - 라운드별 dogfooding 결과.
-- [docs/release-notes/](docs/release-notes/) - 릴리즈 노트.
+- [docs/release-notes/](docs/release-notes/) - 릴리즈 노트
+  ([v0.5.0](docs/release-notes/v0.5.0.md) · [v0.4.0](docs/release-notes/v0.4.0.md) ·
+  [v0.3.0](docs/release-notes/v0.3.0.md)).
 - [CHANGELOG.md](CHANGELOG.md) - 변경 이력.
 - [CONTRIBUTING.md](CONTRIBUTING.md) - 기여 가이드.
 - [config.example.toml](config.example.toml) - config 필드 + 주석.

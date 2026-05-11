@@ -173,7 +173,8 @@ Full 13-tool list: [docs/internals.md](docs/internals.md#mcp-tools).
 
 ## Limitations
 
-- **Early beta** (v0.4.0). v0.5.0 will carry the production tag.
+- **Production** (v0.5.0). Verified on both Claude Code and Codex CLI.
+  Caveat: no organic everyday-use measurement yet.
 - **Quota savings are anecdotal**. Anthropic / OpenAI formulas not
   public; quantitative measurement not possible.
 - **Search measurements (R@5, P@1, etc.) synthetic-seed based**.
@@ -191,6 +192,14 @@ Full 13-tool list: [docs/internals.md](docs/internals.md#mcp-tools).
   prepended to system prompt every conversation. Estimated ~1633
   tokens. Details:
   [docs/measurements/phase7-mcp-audit.md](docs/measurements/phase7-mcp-audit.md).
+- **Test coverage 90%** (475 unit/plugin tests). Most of the missing
+  10% is external-service-dependent code paths (`llm/ollama.py` 62% /
+  `llm/lmstudio.py` 58% - covered when `pytest -m integration` runs
+  against live services). `token_count.py` 34% is the deferred
+  Phase 5-4 module (no Anthropic API access here).
+- **Codex subagent auto-discovery** (`plugin/agents/tuna-developer.toml`)
+  and **`tunallama://memory/state` resource auto-attach** unverified
+  on Codex 0.128.0. v0.6.0 candidate. The 13 MCP tools themselves work.
 
 ## What this is not
 
@@ -302,6 +311,8 @@ Detailed contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md).
 - [docs/specs/](docs/specs/)
 - [docs/dogfooding-log.md](docs/dogfooding-log.md)
 - [docs/release-notes/](docs/release-notes/)
+  ([v0.5.0](docs/release-notes/v0.5.0.md) · [v0.4.0](docs/release-notes/v0.4.0.md) ·
+  [v0.3.0](docs/release-notes/v0.3.0.md))
 - [CHANGELOG.md](CHANGELOG.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [config.example.toml](config.example.toml)
