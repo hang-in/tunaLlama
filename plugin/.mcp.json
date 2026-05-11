@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "tunallama": {
-      "command": "python",
-      "args": ["-m", "plugin.mcp_server"],
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/tunallama-mcp",
+      "args": [],
       "cwd": "${CLAUDE_PLUGIN_ROOT}/.."
     }
   }

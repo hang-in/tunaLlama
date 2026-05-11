@@ -343,13 +343,23 @@ on the first line?
 **Kiwi morphology fails**: `pip install kiwipiepy`. On macOS, Xcode CLI
 tools required (`xcode-select --install`).
 
-### MCP tools not visible in Claude/Codex context
+### MCP tools missing or `tunaLlama MCP Server: failed` in `/plugin`
 
-**`.mcp.json` cwd wrong**: check where `claude plugin install` ran.
-For direct registration, `cwd` should be tunaLlama repo absolute path.
+**Cause 1 - venv deps not picked up** (v0.5.8 and earlier): the
+plugin's `.mcp.json` spawned `python` directly, and Claude Code's
+child process doesn't honor mise / pyenv / direnv shell hooks, so the
+system python is used without fastmcp / anthropic SDK installed -
+ImportError. **v0.5.9+ uses a wrapper script
+(`plugin/bin/tunallama-mcp`) that falls back to `.venv/bin/python`
+automatically** - update is recommended.
 
-**Python venv not picked up**: system python may spawn without deps.
-Use venv python absolute path, or `mise install` first.
+**Cause 2 - `.mcp.json` cwd wrong**: check where `claude plugin
+install` ran. For direct registration, `cwd` should be tunaLlama repo
+absolute path.
+
+**Cause 3 - no `.venv`**: if `.venv/bin/python` itself is missing the
+wrapper falls back to system python and may still fail. Create the
+venv via `mise run install` or `uv venv && uv pip install -e .`.
 
 ### `tuna_*` tools not getting called
 

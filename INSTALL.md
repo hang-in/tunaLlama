@@ -113,7 +113,8 @@ PLUGIN_ROOT="$(pwd)"
 codex plugin marketplace add "$PLUGIN_ROOT"
 
 # 4-B-2. MCP server 등록 (도구 노출 - 별도 명령)
-codex mcp add tunallama -- "$PLUGIN_ROOT/.venv/bin/python" -m plugin.mcp_server
+# wrapper 가 .venv/bin/python 자동 fallback (v0.5.9+).
+codex mcp add tunallama -- "$PLUGIN_ROOT/plugin/bin/tunallama-mcp"
 
 # 4-B-3. (옵션) SessionStart hook 등록 - state.md 자동 prepend
 # 우리 측 plugin/hooks/hooks.json 은 Codex 가 자동 인식 안 함 (v0.5.6 실측).

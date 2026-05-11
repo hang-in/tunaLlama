@@ -1,6 +1,6 @@
 {
   "name": "tunaLlama",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "description": "Delegate heavy code generation to a local LLM (Ollama / LM Studio). Search + memory layer + Codex CLI compatibility (one repo / two environments).",
   "author": {
     "name": "d9ng (hang-in)",

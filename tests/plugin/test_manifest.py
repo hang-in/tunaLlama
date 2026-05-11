@@ -51,12 +51,24 @@ def test_mcp_json_registers_server():
     p = PLUGIN_ROOT / ".mcp.json"
     data = json.loads(p.read_text(encoding="utf-8"))
     server = data["mcpServers"]["tunallama"]
-    # Phase audit: 절대경로 하드코딩 제거 (다른 사용자 환경 호환).
-    # 사용자가 venv 활성화 또는 PATH 에 python 둔 상태에서 cwd=plugin_root/..
-    # 로 spawn.
-    assert server["command"] == "python"
-    assert server["args"] == ["-m", "plugin.mcp_server"]
+    # v0.5.9: wrapper script 로 venv python 자동 fallback (mise/pyenv
+    # 활성 없이 child process spawn 되면 system python 잡혀서 deps 부재로
+    # fail 하던 회귀 해결). wrapper 가 .venv/bin/python 우선, system
+    # python fallback.
+    assert server["command"] == "${CLAUDE_PLUGIN_ROOT}/bin/tunallama-mcp"
+    assert server["args"] == []
     assert "${CLAUDE_PLUGIN_ROOT}" in server.get("cwd", "")
+
+
+def test_mcp_wrapper_script_exists_and_executable():
+    """wrapper script 가 존재 + 실행권한이어야 .mcp.json spawn 이 작동."""
+    wrapper = PLUGIN_ROOT / "bin" / "tunallama-mcp"
+    assert wrapper.exists(), f"missing: {wrapper}"
+    # POSIX 실행권한 - macOS/Linux. Windows 는 별도 .bat (현재 미지원).
+    assert wrapper.stat().st_mode & 0o111, f"not executable: {wrapper}"
+    body = wrapper.read_text(encoding="utf-8")
+    assert body.startswith("#!"), "shebang missing"
+    assert "plugin.mcp_server" in body
 
 
 def test_skill_file_exists_with_frontmatter():

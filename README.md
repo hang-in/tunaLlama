@@ -332,13 +332,24 @@ curl http://localhost:1234/v1/models  # LM Studio
 
 **Kiwi 형태소 분석기 실패**: `pip install kiwipiepy` 재설치. macOS 의 경우 Xcode CLI tools 필요 (`xcode-select --install`).
 
-### MCP 도구가 Claude/Codex 컨텍스트에서 안 보임
+### MCP 도구가 Claude/Codex 컨텍스트에서 안 보임 / 새 세션에서 server fail
 
-**`.mcp.json` 의 cwd 가 잘못된 경우**: `claude plugin install` 한 위치 확인.
-직접 등록한 경우 `cwd` 가 tunaLlama 레포 절대경로인지 확인.
+**증상**: `/plugin` 화면에서 `tunaLlama MCP Server  Status: ✘ failed`. 또는
+도구 list 에 `tuna_*` 가 안 보임.
 
-**Python venv 미감지**: 시스템 python 으로 spawn 되지만 의존성 없을 수
-있음. venv 의 python 절대경로로 등록 또는 `mise install` 후 PATH 통해 실행.
+**원인 1 - venv 의존성 미해결** (v0.5.8 이하): plugin 의 `.mcp.json` 이
+`command: "python"` 으로 system python 을 spawn 함. mise / pyenv / direnv
+같은 shell hook 은 Claude Code 의 child process 에서 활성 안 돼서 venv 의
+fastmcp / anthropic SDK 등 deps 못 잡고 ImportError. **v0.5.9+ 부터 wrapper
+script (`plugin/bin/tunallama-mcp`) 가 `.venv/bin/python` 자동 fallback** -
+업데이트 권장.
+
+**원인 2 - `.mcp.json` cwd 잘못된 경우**: `claude plugin install` 한 위치
+확인. 직접 등록한 경우 `cwd` 가 tunaLlama 레포 절대경로인지 확인.
+
+**원인 3 - Python venv 부재**: `.venv/bin/python` 자체가 없으면 wrapper 도
+system python 으로 fallback - deps 부재로 fail. `mise run install` 또는
+`uv venv && uv pip install -e .` 로 .venv 생성.
 
 ### `tuna_*` 도구가 호출 안 됨
 

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# tunaLlama MCP server launcher.
+#
+# Claude Code / Codex CLI 가 MCP server 를 spawn 할 때 mise / pyenv /
+# direnv 같은 shell hook 이 활성되지 않아 system python 이 잡히는 문제가
+# 있다 (의존성 미설치 → ImportError 로 fail). 이 wrapper 가 repo 의
+# .venv 가 있으면 그 python 으로, 없으면 system python 으로 자동 fallback.
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_DIR"
+
+if [ -x ".venv/bin/python" ]; then
+  exec ".venv/bin/python" -m plugin.mcp_server "$@"
+elif command -v python >/dev/null 2>&1; then
+  exec python -m plugin.mcp_server "$@"
+elif command -v python3 >/dev/null 2>&1; then
+  exec python3 -m plugin.mcp_server "$@"
+else
+  echo "tunallama-mcp: no python found (.venv/bin/python, python, python3 all missing)" >&2
+  exit 1
+fi
