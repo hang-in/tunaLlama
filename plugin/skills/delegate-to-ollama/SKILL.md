@@ -1,11 +1,16 @@
 ---
 name: delegate-to-ollama
-description: Delegate token-heavy coding work to a local LLM (Ollama / LM Studio) via tunaLlama. Use this when the user asks for code generation, file review, refactoring, or any task where the output would be long. Saves tokens by running heavy generation locally while you maintain oversight.
+description: Delegate suitable coding subtasks to a local/cloud LLM (Ollama / Ollama Cloud / LM Studio) via tunaLlama, like an architect delegating to a subagent. The local LLM has a smaller context window than Claude, so before delegating non-trivial work fetch relevant project context (state.md + past calls) and prepend it. Maintain oversight by reviewing the returned output.
 ---
 
 # When to use tunaLlama tools
 
-You have access to `tuna_*` MCP tools backed by a local LLM. Use them when:
+`tuna_*` MCP tools delegate coding work to a local/cloud LLM. This is the
+Opus-with-Sonnet-subagent pattern: a smaller model handles the actual code
+generation, while you stay the architect.
+
+The local LLM's window is smaller than yours, so the architect's job before
+delegation is **fetching the context the subagent lacks**. Use them when:
 
 1. **The user asks for code generation** and you have clear requirements.
    Use `tuna_generate_code` instead of generating the code yourself.
@@ -27,27 +32,38 @@ You have access to `tuna_*` MCP tools backed by a local LLM. Use them when:
 - Tasks that require knowledge of recent conversation context the local LLM does not have.
 - Anything safety-critical or involving the user's intent interpretation.
 
-# Standard pattern: delegate then verify
+# Standard pattern: context-fetch then delegate then verify
 
-1. Decompose the user's request into clear instructions for the local LLM.
-2. Call the appropriate `tuna_*` tool.
-3. Review the returned output. Catch obvious problems.
-4. If the output looks wrong, call `tuna_fix_code` with the error description.
-5. Present the verified result to the user.
+1. **Context-fetch** (architect's responsibility for the smaller subagent):
+   - If the task is non-trivial, call `tuna_recall` to surface relevant past
+     work in this project. The local LLM doesn't share your conversation
+     context - relevant snippets help it avoid reinventing or contradicting.
+   - Load project rules: the MCP resource `tunallama://memory/state` should
+     auto-attach. If not visible, call `tuna_load_memory` once per session.
+2. **Decompose** the user's request into clear instructions, including the
+   fetched context that the local LLM lacks.
+3. Call the appropriate `tuna_*` tool.
+4. **Verify** the returned output - catch obvious problems (wrong API,
+   missing edge cases, divergence from project conventions in state.md).
+5. If wrong, call `tuna_fix_code` with a specific error description.
+6. Present the verified result to the user.
 
-# Recall
+# Recall (delegation context fetch)
 
-Before starting non-trivial work in a familiar codebase, consider calling
-`tuna_recall` with keywords from the current request. Past delegations on the
-same codebase often surface useful prior decisions. Korean queries work — the
-backend uses Kiwi morpheme indexing.
+`tuna_recall` searches past delegation outputs (`tuna_*` calls). Useful
+before delegating non-trivial work in a familiar codebase - the local LLM
+gets relevant prior decisions and patterns that wouldn't otherwise reach
+its context window. Korean queries work (Kiwi morpheme indexing).
+
+Different from `tuna_load_memory`, which returns the curated `state.md`
+(conventions + active decisions + constraints + anti-patterns) - the
+project's rules of the road. Use both: `state.md` for rules, `tuna_recall`
+for relevant past work.
 
 # Project memory (state.md)
 
-At session start, the MCP resource `tunallama://memory/state` may auto-attach
-this project's conventions, active decisions, constraints, and observed
-anti-patterns. If that resource is not visible in your context, call
-`tuna_load_memory` once to load the same content as a tool response. The file
-lives at `~/.tunallama/projects/<hash>/state.md` and is preserved across
-sessions. Manual edits are kept; auto-extracted entries (Phase 6-2+) are
-tagged. Honor `Constraints` and avoid `Anti-patterns observed`.
+`~/.tunallama/projects/<hash>/state.md` is auto-loaded via the MCP resource
+`tunallama://memory/state`. If not auto-attached, call `tuna_load_memory`
+once per session. Manual edits are preserved; auto-extracted entries are
+tagged. Honor `Constraints` and avoid `Anti-patterns observed` in delegation
+prompts - the local LLM will only see them if you include them.

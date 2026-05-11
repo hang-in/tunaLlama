@@ -165,6 +165,104 @@ qwen3-coder:480b            1.00    0.68    0.57    1.00
 
 ---
 
+## Phase 7-2 결과 - mid-size LLM context boost (gemma4:31b, 18분 55초, cloud 24)
+
+새 framing: 검색 = 로컬 LLM 컨텍스트 한계 보완 (Architect → Subagent 패턴).
+
+```
+mode             n    id_hit   kw_hits    excess   valid
+none             6      0.26      0.00      4.00    1.00
+relevant         6      0.85      0.00      1.83    1.00
+mixed            6      0.85      0.00      3.50    1.00
+adversarial      6      0.21      0.00      6.00    1.00
+
+context boost (relevant - none) = +0.58
+adversarial damage (adv - none) = -0.06
+```
+
+### 거대한 발견
+
+- **context boost +0.58**: id_hit 0.26 → 0.85 (3.3배). recall prefix 의
+  압도적 효과 정량 검증.
+- **mixed = relevant (0.85 동일)**: R@5 0.5 시뮬 (무관 record 섞임) 에서도
+  모델이 relevant 부분 정확 활용. **이전 "auto_recall=always 위험" 우려를
+  정량 반박**.
+- **adversarial -0.06**: 무관 prefix 만 prepend 도 거의 영향 없음. Phase
+  5-3 의 cloud LLM kw_hit 0% 결과 일관.
+- **per-probe**: P4 (TOML/pydantic 일반) 외 5 probe 는 none 모드에서 0-0.33,
+  relevant 에서 0.67-1.00. **프로젝트 특화 작업일수록 context boost 효과 큼**.
+- **kw_hits 0 모든 mode**: 모델이 무관 키워드 자동 무시. **production-grade
+  robust**.
+
+### 결론
+
+사용자 framing 정량 검증:
+> "검색 품질이 중요한 건 로컬LLM의 컨텍스트 한계가 있으니 그 부분을 커버
+> 하는 의미가 크고"
+
+→ tunaLlama 의 검색은 mid-size LLM 위임 시 "Architect 가 Subagent 의 컨텍스트
+한계 보완" 으로 정량 가치 입증 (id_hit 3.3배).
+
+### qwen3-coder-next (2분 52초, 7배 빠름)
+
+```
+mode             n    id_hit   kw_hits    excess   valid
+none             6      0.10      0.00      5.67    1.00
+relevant         6      0.74      0.00      2.83    1.00
+mixed            6      0.74      0.00      5.33    1.00
+adversarial      6      0.21      0.33      7.83    1.00
+
+context boost (relevant - none) = +0.64
+adversarial damage (adv - none) = +0.11
+```
+
+- context boost +0.64 (gemma4 +0.58 보다 더 큼).
+- mixed = relevant 0.74 일관.
+- adversarial kw_hits 0.33 - 무관 prefix 일부 누출 (gemma4 0.00 보다 약함).
+- 두 모델 합쳐서 **검색 가치 모델 무관 일반화** 검증.
+
+### kimi-k2.6 (22분 21초)
+
+```
+mode             n    id_hit   kw_hits    excess   valid
+none             6      0.15      0.00      8.50    1.00
+relevant         6      0.75      0.00      2.67    1.00
+mixed            6      0.85      0.00      8.17    1.00
+adversarial      6      0.26      0.00     15.00    1.00
+
+context boost +0.60, adversarial damage +0.11
+```
+
+- context boost +0.60 (3 모델 모두 +0.58~+0.64 일관).
+- mixed (0.85) > relevant (0.75) - sample variance / noise context oddly
+  helpful. 재현 필요.
+- adversarial excess 15.00 - 무관 context 받을 때 코드 매우 verbose.
+
+### 3 모델 종합 (모델 무관 일관 결론)
+
+| metric | gemma4:31b | qwen3-coder-next | kimi-k2.6 |
+|---|---:|---:|---:|
+| context boost | +0.58 | +0.64 | +0.60 |
+| relevant id_hit | 0.85 | 0.74 | 0.75 |
+| mixed id_hit | 0.85 | 0.74 | 0.85 |
+| adversarial damage | -0.06 | +0.11 | +0.11 |
+| 시간 | 18:55 | **02:52** | 22:21 |
+
+**production default 추천**: gemma4:31b (절대값 + robustness 우세).
+latency 우선 시 qwen3-coder-next.
+
+## Round 17 - 2026-05-11 · Phase 7-2 probe seed · glm-4.7 · `tuna_general_task`
+
+- 채널: `tuna_general_task` (round 16 패턴 - dev_review_from_spec 의
+  코드 모드 강제 우회).
+- 위임: 6 probe 의 한국어 task description + 정답 identifier list 만 (코드 X).
+- 결과: ✓ **bounded data 정상 출력**. PROBE_TASKS dict + CORRECT_IDENTIFIERS
+  dict 한 번에 정리. 함수 정의 / pytest / mock 0.
+- 차용 가치: high - architect 가 일부 사소한 식별자만 정리 후 그대로 시드로
+  사용 (`tests/integration/seeds/phase7_probes.py`).
+- 결론: round 16 의 채널 switch 결정 (general_task) 가 round 17 에서도 검증.
+  bounded data tasks 에 적합.
+
 ## Phase 5-D 결과 - Adaptive routing (KURE + adaptive, 25분 56초, cloud 20)
 
 ```

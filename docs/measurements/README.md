@@ -13,6 +13,9 @@
   LOPO, HyDE, KURE-v1, Adaptive routing).
 - [phase7-mcp-audit.md](phase7-mcp-audit.md) - MCP 도구 통합 + system prompt
   size 측정 (15 → 13 tools, ~1633 tokens).
+- [phase7-context-boost.md](phase7-context-boost.md) - **mid-size LLM context
+  boost** (gemma4:31b context boost +0.58, mixed = relevant). 검색의 진짜
+  가치 정량 검증.
 
 ## 검색 path 우열 (524 record LOPO 기준)
 
