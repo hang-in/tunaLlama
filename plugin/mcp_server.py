@@ -59,7 +59,7 @@ def tuna_review(code: str = "", file_path: str = "", focus: str = "") -> str:
     context, major token saver). ``focus`` can be 'security', 'performance',
     etc. Exactly one of ``code`` or ``file_path`` is required."""
     if file_path and code:
-        return "[error] tuna_review: pass either `code` OR `file_path`, not both."
+        return "[오류] tuna_review: `code` 또는 `file_path` 중 하나만 전달 가능합니다."
     if file_path:
         return call_delegation(
             core_review_file,
@@ -74,7 +74,7 @@ def tuna_review(code: str = "", file_path: str = "", focus: str = "") -> str:
             code=code,
             focus=empty_to_none(focus),
         )
-    return "[error] tuna_review: provide `code` or `file_path`."
+    return "[오류] tuna_review: `code` 또는 `file_path` 중 하나는 필수입니다."
 
 
 @mcp.tool()
@@ -84,7 +84,7 @@ def tuna_explain(code: str = "", file_path: str = "", audience: str = "") -> str
     context). ``audience`` like 'beginner' / 'expert' adjusts depth. Exactly
     one of ``code`` or ``file_path`` is required."""
     if file_path and code:
-        return "[error] tuna_explain: pass either `code` OR `file_path`, not both."
+        return "[오류] tuna_explain: `code` 또는 `file_path` 중 하나만 전달 가능합니다."
     if file_path:
         return call_delegation(
             core_explain_file,
@@ -99,7 +99,7 @@ def tuna_explain(code: str = "", file_path: str = "", audience: str = "") -> str
             code=code,
             audience=empty_to_none(audience),
         )
-    return "[error] tuna_explain: provide `code` or `file_path`."
+    return "[오류] tuna_explain: `code` 또는 `file_path` 중 하나는 필수입니다."
 
 
 @mcp.tool()

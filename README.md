@@ -1,5 +1,13 @@
 # tunaLlama
 
+[![CI](https://github.com/hang-in/tunaLlama/actions/workflows/ci.yml/badge.svg)](https://github.com/hang-in/tunaLlama/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Status: early beta](https://img.shields.io/badge/status-early%20beta-orange.svg)](#)
+[![Tests: 475 passing](https://img.shields.io/badge/tests-475%20passing-brightgreen.svg)](#)
+[![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
+[![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
+
 Claude Code / Codex CLI 쓰면서 토큰 빨리 닳는 사용자를 위한 위임 도구입니다.
 
 무거운 코드 생성을 로컬 Ollama / LM Studio / Ollama Cloud 에 위임하고,

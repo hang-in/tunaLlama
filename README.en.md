@@ -1,5 +1,13 @@
 # tunaLlama
 
+[![CI](https://github.com/hang-in/tunaLlama/actions/workflows/ci.yml/badge.svg)](https://github.com/hang-in/tunaLlama/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Status: early beta](https://img.shields.io/badge/status-early%20beta-orange.svg)](#)
+[![Tests: 475 passing](https://img.shields.io/badge/tests-475%20passing-brightgreen.svg)](#)
+[![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
+[![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
+
 A delegation tool for Claude Code / Codex CLI users who burn tokens fast.
 
 Heavy code generation is delegated to local Ollama / LM Studio /

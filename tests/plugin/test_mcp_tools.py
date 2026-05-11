@@ -29,17 +29,17 @@ def test_tuna_explain_code(fake_state):
 
 def test_tuna_review_requires_input(fake_state):
     out = mcp_server.tuna_review()
-    assert "error" in out.lower()
+    assert "오류" in out or "error" in out.lower()
 
 
 def test_tuna_review_rejects_both_inputs(fake_state):
     out = mcp_server.tuna_review(code="x", file_path="/tmp/y.py")
-    assert "error" in out.lower()
+    assert "오류" in out or "error" in out.lower()
 
 
 def test_tuna_explain_requires_input(fake_state):
     out = mcp_server.tuna_explain()
-    assert "error" in out.lower()
+    assert "오류" in out or "error" in out.lower()
 
 
 def test_tuna_refactor_code(fake_state):
