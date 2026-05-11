@@ -28,6 +28,25 @@ def test_marketplace_json_valid():
     assert data["plugins"][0]["source"].startswith("./")
 
 
+def test_marketplace_version_matches_plugin_version():
+    """marketplace.json 의 plugin version 과 plugin.json 의 version 이 일치해야.
+
+    불일치 시 Claude Code install UI 에 옛 버전 surface (v0.5.3 발견).
+    """
+    mp = json.loads(
+        (PLUGIN_ROOT.parent / ".claude-plugin" / "marketplace.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    pj = json.loads(
+        (PLUGIN_ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+    )
+    assert mp["plugins"][0]["version"] == pj["version"], (
+        f"marketplace.json version {mp['plugins'][0]['version']} != "
+        f"plugin.json version {pj['version']} - install UI 가 옛 버전 표시할 위험"
+    )
+
+
 def test_mcp_json_registers_server():
     p = PLUGIN_ROOT / ".mcp.json"
     data = json.loads(p.read_text(encoding="utf-8"))
