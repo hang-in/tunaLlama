@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Status: production](https://img.shields.io/badge/status-production-brightgreen.svg)](#)
-[![Tests: 483 passing](https://img.shields.io/badge/tests-483%20passing-brightgreen.svg)](#)
+[![Tests: 487 passing](https://img.shields.io/badge/tests-487%20passing-brightgreen.svg)](#)
 [![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
 [![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
 
@@ -197,15 +197,30 @@ Full 13-tool list: [docs/internals.md](docs/internals.md#mcp-tools).
   `llm/lmstudio.py` 58% - covered when `pytest -m integration` runs
   against live services). `token_count.py` 34% is the deferred
   Phase 5-4 module (no Anthropic API access here).
-- **Codex subagent auto-discovery does NOT work** (Codex 0.128.0 live
-  test): `plugin/agents/tuna-developer.toml` is cached, but Codex's
-  `spawn_agent` types list only includes default / explorer / worker -
-  `tuna-developer` not registered. The 13 MCP tools work; delegation
+- **Subagent auto-discovery does NOT work** (Codex 0.128.0 live test):
+  `plugin/agents/tuna-developer.toml` is cached but Codex's
+  `spawn_agent` types only includes default / explorer / worker. Claude
+  Code side not yet measured. The 13 MCP tools work in both; delegation
   happens at the tool layer.
-- **MCP resource auto-attach does NOT work** (Codex 0.128.0 live test):
-  `tunallama://memory/state` is not attached at session start.
-  **Explicit `tuna_load_memory` call required**. SKILL.md instructs
-  the architect to call it once per session.
+- **MCP resource auto-attach does NOT work** (both environments live-
+  tested): `tunallama://memory/state` is not attached at session start
+  on either Claude Code or Codex CLI. v0.5.2 adds a SessionStart hook
+  (`plugin/hooks/session_start.py`) to prepend state.md content via
+  stdout - client support varies. Fallback: architect calls
+  `tuna_load_memory` once per session.
+
+### Cross-environment behavior matrix (v0.5.2)
+
+| Item | Claude Code | Codex CLI 0.128.0 |
+|---|---|---|
+| MCP tools 13 (tool calls) | ✓ | ✓ |
+| DB sharing (`~/.tunallama/memory.db`) | ✓ | ✓ |
+| state.md sharing (`~/.tunallama/projects/<hash>/state.md`) | ✓ | ✓ |
+| Explicit `tuna_load_memory` / `tuna_recall` | ✓ | ✓ |
+| **MCP resource auto-attach** | ✗ | ✗ |
+| **SessionStart hook (state.md prepend)** | client-dependent | client-dependent |
+| **Subagent auto-discovery** | ? (not measured) | ✗ |
+
 - **state.md auto-extract false positives**. v0.5.1 strips code-block
   contents and filters tokens by meaningfulness - not 100% eliminated.
   Use `tunallama state clean` (delete auto entries) or edit directly

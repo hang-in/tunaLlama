@@ -60,10 +60,20 @@ Different from `tuna_load_memory`, which returns the curated `state.md`
 project's rules of the road. Use both: `state.md` for rules, `tuna_recall`
 for relevant past work.
 
-# Project memory (state.md)
+# Project memory (state.md) - CRITICAL: call once per session
 
-`~/.tunallama/projects/<hash>/state.md` is auto-loaded via the MCP resource
-`tunallama://memory/state`. If not auto-attached, call `tuna_load_memory`
-once per session. Manual edits are preserved; auto-extracted entries are
-tagged. Honor `Constraints` and avoid `Anti-patterns observed` in delegation
-prompts - the local LLM will only see them if you include them.
+`~/.tunallama/projects/<hash>/state.md` holds the project's conventions /
+active decisions / constraints / anti-patterns.
+
+**Important (v0.5.1 measurement)**: MCP resource `tunallama://memory/state`
+auto-attach does NOT work in current Claude Code or Codex CLI versions. The
+SessionStart hook (Phase 8) outputs state content via stdout but is not yet
+universally honored.
+
+**Action required**: call `tuna_load_memory` **once at session start** before
+any delegation - if you don't, you'll miss the project's
+Constraints / Anti-patterns and the local LLM will repeat known mistakes.
+
+Honor `Constraints` and avoid `Anti-patterns observed` in delegation
+prompts - the local LLM will only see them if you include them in the
+spec or recall_prefix.

@@ -25,7 +25,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
-DEFAULT_STATE_BASE = Path.home() / ".tunallama" / "projects"
+def _default_state_base() -> Path:
+    """``TUNA_STATE_BASE`` env override 또는 ``~/.tunallama/projects``."""
+    override = os.environ.get("TUNA_STATE_BASE")
+    if override:
+        return Path(override).expanduser()
+    return Path.home() / ".tunallama" / "projects"
+
+
+DEFAULT_STATE_BASE = _default_state_base()
 DEFAULT_MAX_BYTES = 2048
 
 SECTION_CONVENTIONS = "Conventions"
