@@ -3,7 +3,48 @@
 본 문서는 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/) 형식을 따른다.
 버전 번호는 [Semantic Versioning](https://semver.org/lang/ko/)을 따른다.
 
-## [Unreleased] — 0.2.0 (Phase 2 + 3 통합 완료, 릴리즈 대기)
+## [Unreleased] - 0.5.0 (production release 준비)
+
+### audit + production-ready 작업
+- 외부 audit (general-purpose subagent) 결과 must-fix 3개 + 권장 5개 처리.
+- `.mcp.json` 절대경로 → portable (`python` + `${CLAUDE_PLUGIN_ROOT}/..`).
+- ruff 43 errors → 0 (F401 / F541 / F821 / F841 / E702 정리).
+- `.env.example` 4 env vars 추가 (`TUNA_EMBEDDING_MODEL` / `TUNA_EMBEDDING_DEVICE`
+  / `TUNA_AUTO_EXTRACT_STATE` / `TUNALLAMA_HOOK_THRESHOLD`).
+- `dev_review_loop` 93줄 → `_run_review_iteration()` 추출.
+- `init_cmd` broad except → 구체 예외.
+- `.github/workflows/ci.yml` 추가 (ruff + pytest gate).
+- README 상세화: badges + 5분 설치 4단계 + "첫 호출 해보기" + Troubleshooting
+  + Codex CLI 섹션.
+- CONTRIBUTING.md + ISSUE 템플릿 (bug / feature) 추가.
+- 에러 메시지 한국어화 (`[error]` → `[오류]`).
+- 측정자산 archive (`tests/integration/archive/`): Phase 4-4 saturate +
+  Phase 5-2D MMR abandoned 보존 + README.
+- TOTAL coverage 90%, 475 unit/plugin pass.
+
+### Phase 8 - Codex CLI 호환 (한 레포 / 두 환경)
+- `plugin/agents/tuna-developer.toml` 추가 - Codex 용 TOML.
+- Claude `tuna-developer.md` 와 동시 보존.
+- Codex CLI 가 `.claude-plugin/marketplace.json` 직접 읽음 (4개 인식 위치).
+
+### Phase 7-2 - mid-size LLM context boost 측정
+- 6 probe × 4 mode × 3 model (gemma4:31b / qwen3-coder-next / kimi-k2.6).
+- **context boost +0.58 ~ +0.64** 3 모델 일관 검증.
+- **mixed = relevant**: R@5 0.5 시뮬에서도 코드 품질 동등.
+- adversarial damage 작음.
+- 자세한 결과: `docs/measurements/phase7-context-boost.md`.
+
+## [0.4.0] - 2026-05-11 - Memory layer
+
+- Phase 6: state.md auto-load + decision/convention/constraint/antipattern
+  자동 추출 + diff-based learning + 자동화 metrics (4 종).
+
+## [0.3.0] - 2026-05-11 - production-RAG path
+
+- Phase 5: HyDE hybrid (P@1 0.92, σR@5 0.14) + KURE-v1 swap + Adaptive routing.
+- MCP 도구 15 → 13 통합.
+
+## [Archived] - 0.2.0 (Phase 2 + 3 통합 완료, 릴리즈 대기)
 
 ### Phase 3 — semantic edges + synonym recall benchmark
 - **`tests/integration/test_search_quality_synonym.py`**: 36 record (6 task
