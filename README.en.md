@@ -63,6 +63,13 @@ Internals: [docs/internals.md](docs/internals.md).
 
 ## 5-minute install
 
+> **Agent-driven install**: in your Claude Code / Codex CLI session, type
+> `follow https://github.com/hang-in/tunaLlama 's INSTALL.md to install it for me`
+> -> the agent reads [INSTALL.md](INSTALL.md) and walks through deps,
+> `.env`, plugin registration, and verification step by step. ~5 minutes.
+
+Manual install steps below.
+
 ### 1. Clone + deps
 
 ```bash

@@ -62,6 +62,13 @@ Claude Code 와 Codex CLI 둘 다 작동** (둘 다 `.claude-plugin/marketplace.
 
 ## 5분 설치
 
+> **에이전트에게 한 줄로 위임 가능**: Claude Code / Codex CLI 세션에서
+> `https://github.com/hang-in/tunaLlama 의 INSTALL.md 따라 설치해줘` 입력
+> → 에이전트가 [INSTALL.md](INSTALL.md) 읽고 의존성 / `.env` / 플러그인
+> 등록 / 검증까지 단계별 실행. 5분 안에 사용 가능.
+
+수동 설치는 아래 단계:
+
 ### 1. Clone + 의존성 설치
 
 ```bash
