@@ -30,21 +30,24 @@ def main() -> int:
         # 빈 state - prepend 가치 X, silent.
         return 0
 
-    # Claude Code hook 의 stdout 은 system 메시지로 architect 컨텍스트 추가됨.
-    # `additionalContext` JSON 도 일부 클라이언트가 인식 - 두 방식 같이.
+    # Claude Code SessionStart hook 의 정확한 응답 schema (context-mode 비교
+    # 분석 결과): hookSpecificOutput.hookEventName + nested additionalContext.
+    # flat {additionalContext: ...} 는 인식 안 됨 (v0.5.2 / v0.5.3 / v0.5.4 실측).
+    additional_context = (
+        "[tunaLlama project memory - state.md auto-prepend]\n"
+        f"Source: {state.path}\n\n"
+        + render(state)
+    )
     payload = {
-        "additionalContext": (
-            "[tunaLlama project memory - state.md auto-prepend]\n"
-            f"Source: {state.path}\n\n"
-            + render(state)
-        )
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": additional_context,
+        }
     }
     try:
-        # JSON 출력 - Claude Code SessionStart 가 인식하면 컨텍스트 attach.
         sys.stdout.write(json.dumps(payload, ensure_ascii=False))
     except Exception:  # noqa: BLE001
-        # plain text fallback - JSON 인식 안 되면 raw 출력.
-        sys.stdout.write(payload["additionalContext"])
+        sys.stdout.write(additional_context)
     return 0
 
 

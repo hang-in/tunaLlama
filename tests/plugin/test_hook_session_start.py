@@ -66,9 +66,13 @@ def test_hook_outputs_json_with_state(tmp_path, monkeypatch):
         f"stderr: {result.stderr}"
     )
     data = json.loads(result.stdout)
-    assert "additionalContext" in data
-    assert "MemoryStore" in data["additionalContext"]
-    assert "tunaLlama project memory" in data["additionalContext"]
+    # Claude Code SessionStart schema: hookSpecificOutput.hookEventName +
+    # nested additionalContext.
+    assert "hookSpecificOutput" in data
+    hso = data["hookSpecificOutput"]
+    assert hso["hookEventName"] == "SessionStart"
+    assert "MemoryStore" in hso["additionalContext"]
+    assert "tunaLlama project memory" in hso["additionalContext"]
 
 
 def test_hook_silent_on_missing_module(tmp_path, monkeypatch):

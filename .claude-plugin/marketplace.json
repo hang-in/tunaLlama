@@ -9,7 +9,7 @@
       "name": "tunaLlama",
       "source": "./plugin",
       "description": "Delegate heavy code generation to a local LLM (Ollama / Ollama Cloud / LM Studio). Search + memory layer + Codex CLI compatibility.",
-      "version": "0.5.4"
+      "version": "0.5.5"
     }
   ]
 }
