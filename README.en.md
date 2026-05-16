@@ -422,7 +422,11 @@ Detailed contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md).
 - [docs/specs/](docs/specs/)
 - [docs/dogfooding-log.md](docs/dogfooding-log.md)
 - [docs/release-notes/](docs/release-notes/)
-  ([v0.5.1](docs/release-notes/v0.5.1.md) · [v0.5.0](docs/release-notes/v0.5.0.md) ·
+  ([v0.5.9](docs/release-notes/v0.5.9.md) · [v0.5.8](docs/release-notes/v0.5.8.md) ·
+  [v0.5.7](docs/release-notes/v0.5.7.md) · [v0.5.6](docs/release-notes/v0.5.6.md) ·
+  [v0.5.5](docs/release-notes/v0.5.5.md) · [v0.5.4](docs/release-notes/v0.5.4.md) ·
+  [v0.5.3](docs/release-notes/v0.5.3.md) · [v0.5.2](docs/release-notes/v0.5.2.md) ·
+  [v0.5.1](docs/release-notes/v0.5.1.md) · [v0.5.0](docs/release-notes/v0.5.0.md) ·
   [v0.4.0](docs/release-notes/v0.4.0.md) · [v0.3.0](docs/release-notes/v0.3.0.md))
 - [CHANGELOG.md](CHANGELOG.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md)

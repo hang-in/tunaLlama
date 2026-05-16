@@ -422,7 +422,8 @@ mise run test                   # pytest (unit + plugin only)
 - [docs/specs/](docs/specs/) - Phase 별 spec 문서.
 - [docs/dogfooding-log.md](docs/dogfooding-log.md) - 라운드별 dogfooding 결과.
 - [docs/release-notes/](docs/release-notes/) - 릴리즈 노트
-  ([v0.5.7](docs/release-notes/v0.5.7.md) · [v0.5.6](docs/release-notes/v0.5.6.md) ·
+  ([v0.5.9](docs/release-notes/v0.5.9.md) · [v0.5.8](docs/release-notes/v0.5.8.md) ·
+  [v0.5.7](docs/release-notes/v0.5.7.md) · [v0.5.6](docs/release-notes/v0.5.6.md) ·
   [v0.5.5](docs/release-notes/v0.5.5.md) ·
   [v0.5.4](docs/release-notes/v0.5.4.md) · [v0.5.3](docs/release-notes/v0.5.3.md) ·
   [v0.5.2](docs/release-notes/v0.5.2.md) · [v0.5.1](docs/release-notes/v0.5.1.md) ·
