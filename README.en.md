@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Status: usable beta](https://img.shields.io/badge/status-usable%20beta-yellow.svg)](#)
-[![Tests: 506 passing](https://img.shields.io/badge/tests-506%20passing-brightgreen.svg)](#)
+[![Tests: 507 passing](https://img.shields.io/badge/tests-507%20passing-brightgreen.svg)](#)
 [![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
 [![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
 
@@ -219,10 +219,12 @@ measurement is still being collected. Below organized by category:
   `~/.tunallama/metrics.db`. View with `tunallama metrics show`.
   Disable: `TUNA_ORGANIC_METRICS=0`. External-user reproducibility is
   still being collected.
-- **Test coverage 90%** (475 unit/plugin tests). Most of the missing
-  10% is external-service-dependent code paths (`llm/ollama.py` 62% /
-  `llm/lmstudio.py` 58% - covered when `pytest -m integration` runs).
-  `token_count.py` 34% is the deferred Phase 5-4 module.
+- **Test coverage 90%** (CI runs 507 unit/plugin tests; 27 more under
+  `integration` / `search_quality` markers; 534 collected in total).
+  Most of the missing 10% is external-service-dependent code paths
+  (`llm/ollama.py` 62% / `llm/lmstudio.py` 58% - covered when
+  `pytest -m integration` runs). `token_count.py` 34% is the deferred
+  Phase 5-4 module.
 
 ### 3. MCP / client compatibility
 

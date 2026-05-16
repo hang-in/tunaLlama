@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Status: usable beta](https://img.shields.io/badge/status-usable%20beta-yellow.svg)](#)
-[![Tests: 506 passing](https://img.shields.io/badge/tests-506%20passing-brightgreen.svg)](#)
+[![Tests: 507 passing](https://img.shields.io/badge/tests-507%20passing-brightgreen.svg)](#)
 [![Coverage: 90%](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](#)
 [![Claude Code / Codex CLI](https://img.shields.io/badge/works%20with-Claude%20Code%20%2F%20Codex%20CLI-purple.svg)](#)
 
@@ -213,10 +213,12 @@ MCP tool 호출 검증, 단 organic dogfooding (실 일상 사용) 측정 자산
   / `syntactically_valid`) 가 `~/.tunallama/metrics.db` 에 적재. `tunallama
   metrics show` 로 조회. 비활성: `TUNA_ORGANIC_METRICS=0`. 누적 baseline
   까지 외부 사용자 재현성은 측정 진행 중입니다.
-- **테스트 커버리지 90%** (475 unit/plugin tests). 미커버 10% 의 대부분은
-  외부 서비스 의존 path (`llm/ollama.py` 62% / `llm/lmstudio.py` 58% -
-  `pytest -m integration` 실행 시 추가 커버). `token_count.py` 34% 는
-  Phase 5-4 보류 모듈 (Anthropic API 미보유라 unit test 없음).
+- **테스트 커버리지 90%** (CI 가 통과시키는 unit/plugin 507 tests +
+  integration/search_quality 마커 27 tests = 총 534 collected). 미커버
+  10% 의 대부분은 외부 서비스 의존 path (`llm/ollama.py` 62% /
+  `llm/lmstudio.py` 58% - `pytest -m integration` 실행 시 추가 커버).
+  `token_count.py` 34% 는 Phase 5-4 보류 모듈 (Anthropic API 미보유라
+  unit test 없음).
 
 ### 3. MCP / 클라이언트 호환성
 
