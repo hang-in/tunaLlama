@@ -1,0 +1,5 @@
+# Windows 스크립트는 CRLF 필수 (cmd.exe 가 LF-only 를 오파싱함)
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.vbs text eol=crlf
+*.ps1 text eol=crlf

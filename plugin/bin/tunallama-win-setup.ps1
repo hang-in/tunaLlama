@@ -18,6 +18,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)  # plugin\bin -> repo root
 $Httpd    = Join-Path $RepoRoot 'plugin\bin\tunallama-httpd.cmd'
+$Vbs      = Join-Path $RepoRoot 'plugin\bin\tunallama-httpd.vbs'
 $TaskName = 'tunaLlama-httpd'
 $Url      = "http://127.0.0.1:$Port/mcp"
 
@@ -50,8 +51,9 @@ if ($Uninstall) {
 
 Write-Host "tunaLlama Windows 셋업 (HTTP 데몬, port $Port)..."
 
-# 1) 데몬 스케줄 작업 (로그온 자동시작) + 즉시 실행
-schtasks /Create /TN $TaskName /TR "cmd /c `"$Httpd`"" /SC ONLOGON /RL LIMITED /F | Out-Null
+# 1) 데몬 스케줄 작업 (로그온 자동시작) + 즉시 실행.
+#    wscript + hidden VBS 로 창 없이 실행 (VBS -> cmd(숨김) -> pythonw(콘솔 없음)).
+schtasks /Create /TN $TaskName /TR "wscript.exe `"$Vbs`"" /SC ONLOGON /RL LIMITED /F | Out-Null
 schtasks /Run /TN $TaskName | Out-Null
 Write-Host '  daemon scheduled task 등록 + 실행'
 Start-Sleep -Seconds 6

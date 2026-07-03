@@ -20,10 +20,15 @@ set "HF_HUB_OFFLINE=1"
 set "PYTHONUTF8=1"
 set "PYTHONUNBUFFERED=1"
 
-if exist "%REPO_DIR%\.venv\Scripts\python.exe" (
-  "%REPO_DIR%\.venv\Scripts\python.exe" -m plugin.mcp_server
+rem 데몬은 창 없이(pythonw = 콘솔 없는 인터프리터) 실행. pythonw 는 콘솔이 없어
+rem stdout/stderr 핸들이 무효라 uvicorn 로깅이 죽으므로 반드시 로그 파일로 리다이렉트.
+rem 디버그: set TUNA_MCP_TRANSPORT=http ^&^& .venv\Scripts\python.exe -m plugin.mcp_server
+if not exist "%USERPROFILE%\.tunallama" mkdir "%USERPROFILE%\.tunallama"
+set "LOG=%USERPROFILE%\.tunallama\httpd.log"
+if exist "%REPO_DIR%\.venv\Scripts\pythonw.exe" (
+  "%REPO_DIR%\.venv\Scripts\pythonw.exe" -m plugin.mcp_server > "%LOG%" 2>&1
 ) else (
-  python -m plugin.mcp_server
+  pythonw -m plugin.mcp_server > "%LOG%" 2>&1
 )
 set "RC=%ERRORLEVEL%"
 popd
