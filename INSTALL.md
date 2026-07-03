@@ -101,6 +101,31 @@ claude plugin install tunaLlama@tunallama-local
 
 설치 후 **Claude Code 재시작** 또는 `/plugin reload` 명령으로 도구 활성화.
 
+#### Windows 사용자 — MCP 는 HTTP 데몬으로 (중요)
+
+Windows 에서는 Python + **stdio** MCP 서버가 Claude Code 와의 조합에서 in-session
+tool 호출이 무한 hang 하는 문제가 있다(서버는 정상, Claude Code 의 Windows stdio
+MCP 클라이언트 이슈 — 같은 머신서 non-Python/HTTP MCP 는 정상 작동). **stdio 대신
+HTTP(streamable-http) 전송**으로 우회한다. mac/Linux 는 stdio 그대로 사용.
+
+```bat
+REM 1) HTTP 데몬 실행 (레포 root). 포트 기본 8766. 런처가 venv python + HTTP 모드 설정.
+plugin\bin\tunallama-httpd.cmd
+
+REM 2) Claude Code 에 HTTP MCP 로 등록 (플러그인의 stdio MCP 대신)
+claude mcp add --transport http tunallama-http http://127.0.0.1:8766/mcp
+
+REM 3) Claude Code 재시작 → mcp__tunallama-http__* 툴 활성 (in-session 정상)
+```
+
+**로그온 자동시작** (데몬 상주):
+```powershell
+schtasks /Create /TN "tunaLlama-httpd" /TR "cmd /c \"<REPO>\plugin\bin\tunallama-httpd.cmd\"" /SC ONLOGON /RL LIMITED /F
+schtasks /Run /TN "tunaLlama-httpd"   # 지금 즉시 시작
+```
+
+플러그인의 skill / subagent / hook 은 그대로 동작한다(HTTP 는 MCP tool 전송만 대체).
+
 ### 4-B. Codex CLI 사용자
 
 Codex CLI 0.128.0 기준 - marketplace 와 MCP, hooks 가 **별도 메커니즘**.

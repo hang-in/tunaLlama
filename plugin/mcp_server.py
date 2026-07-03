@@ -246,7 +246,22 @@ def tuna_load_memory() -> str:
 
 
 def main() -> None:
-    mcp.run()
+    """전송 선택: 기본 stdio (Mac/Linux, Claude Code 자동 spawn).
+
+    Windows 는 Python+stdio MCP 가 Claude Code 와의 조합에서 in-session wedge 가
+    있어 HTTP 데몬 권장. ``TUNA_MCP_TRANSPORT=http`` (또는 sse) 로 전환:
+    - ``TUNA_MCP_HOST`` (기본 127.0.0.1), ``TUNA_MCP_PORT`` (기본 8765).
+    - Claude Code 에는 HTTP url MCP 로 등록 (command 아님).
+    """
+    import os
+
+    transport = os.environ.get("TUNA_MCP_TRANSPORT", "stdio").strip().lower()
+    if transport in ("http", "streamable-http", "sse"):
+        mcp.settings.host = os.environ.get("TUNA_MCP_HOST", "127.0.0.1")
+        mcp.settings.port = int(os.environ.get("TUNA_MCP_PORT", "8765"))
+        mcp.run(transport="streamable-http" if transport in ("http", "streamable-http") else "sse")
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":
