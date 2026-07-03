@@ -176,7 +176,7 @@ docs/specs/foo.md 에 작업 spec 을 먼저 작성한 뒤:
 ### 메모리 검색
 
 ```
-사용자: "tuna_recall 로 이 프로젝트의 BGE-M3 임베딩 사용 검색해줘"
+사용자: "tuna_recall 로 이 프로젝트의 임베딩 모델 설정 검색해줘"
 
 → 과거 5 개 호출 결과 surface
 ```
@@ -350,7 +350,7 @@ mise trust                      # mise.toml 신뢰 (보안)
 mise run install                # editable + dev 의존성
 mise run test                   # pytest (unit + plugin only)
 
-# 측정 통합 테스트 (BGE-M3 다운로드 + cloud LLM 호출):
+# 측정 통합 테스트 (Ollama qwen3-embedding:0.6b + cloud LLM 호출):
 .venv/bin/pytest -m search_quality -s
 ```
 
