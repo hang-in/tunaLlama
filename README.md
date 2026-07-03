@@ -116,6 +116,22 @@ claude plugin marketplace add /path/to/tunaLlama
 claude plugin install tunaLlama@tunallama-local
 ```
 
+> **Windows 사용자 — MCP 전송을 HTTP 로 (필수).**
+> mac/Linux 는 위 플러그인 설치(stdio 자동 spawn)로 끝입니다. 하지만 **Windows 에서는
+> Python + stdio MCP 가 Claude Code 와의 조합에서 in-session tool 호출이 무한 hang**
+> 합니다(서버는 정상 — 같은 머신서 HTTP/비-Python MCP 는 정상 작동. Claude Code 의
+> Windows stdio MCP 클라이언트 이슈). tunaLlama 는 **HTTP(streamable-http) 데몬**으로
+> 우회합니다. 셋업 스크립트 한 번이면 됩니다:
+>
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File plugin\bin\tunallama-win-setup.ps1
+> ```
+>
+> 이 스크립트가 ① HTTP 데몬을 로그온 자동시작 작업으로 등록·실행, ② Claude Code 에
+> `tunallama` HTTP MCP 등록, ③ 플러그인의 stdio MCP 비활성화(중복/hang 제거)까지 합니다.
+> 이후 **Claude Code 재시작** → `mcp__tunallama__*` 툴 정상. 제거는 `-Uninstall` 플래그.
+> (플러그인의 skill/subagent/hook 은 그대로 동작합니다. 자세한 내용: [INSTALL.md](INSTALL.md).)
+
 또는 `~/.claude/settings.json`의 `mcpServers`에 직접 등록:
 
 ```json
