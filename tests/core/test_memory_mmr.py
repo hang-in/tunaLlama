@@ -1,6 +1,14 @@
-"""MMR 단위 테스트."""
+"""MMR 단위 테스트.
+
+Phase 9 이후 vector.embed 는 Ollama 서비스를 호출한다. MMR 다양성 검증은
+"near-duplicate 는 의미적으로 가깝다" 는 성질에 의존하므로, 서비스 없이도
+결정적이고 의미 있게 돌도록 **키워드 기반 fake embed** 로 대체한다(공유 단어가
+많을수록 코사인 유사도가 높은 bag-of-words 벡터). CI 는 Ollama 가 없어도 통과.
+"""
 
 from __future__ import annotations
+
+import hashlib
 
 import numpy as np
 import pytest
@@ -9,10 +17,23 @@ from tunallama_core.errors import RecallError
 from tunallama_core.memory.mmr import mmr_select
 from tunallama_core.memory.search import RecallSnippet, recall_mmr
 from tunallama_core.memory.store import MemoryStore
+from tunallama_core.memory.vector import EMBEDDING_DIM
+
+
+def _keyword_embed(text: str) -> np.ndarray:
+    """결정적 bag-of-words fake — 단어를 dim 에 hash-매핑 후 L2 정규화.
+    공유 단어가 많을수록 코사인 유사도가 높다 (near-duplicate 성질 재현)."""
+    v = np.zeros(EMBEDDING_DIM, dtype=np.float32)
+    for w in text.lower().split():
+        idx = int(hashlib.sha256(w.encode("utf-8")).hexdigest(), 16) % EMBEDDING_DIM
+        v[idx] += 1.0
+    n = float(np.linalg.norm(v))
+    return v / n if n else v
 
 
 @pytest.fixture
-def small_store_with_embeddings(tmp_path):
+def small_store_with_embeddings(tmp_path, monkeypatch):
+    monkeypatch.setattr("tunallama_core.memory.vector.embed", _keyword_embed)
     db = tmp_path / "mmr.db"
     store = MemoryStore(
         db, korean_tokenizer="kiwi", enable_embeddings=True
