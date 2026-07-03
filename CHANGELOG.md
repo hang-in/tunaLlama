@@ -3,6 +3,27 @@
 본 문서는 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/) 형식을 따른다.
 버전 번호는 [Semantic Versioning](https://semver.org/lang/ko/)을 따른다.
 
+## [0.6.0] - 2026-07-03
+
+임베딩을 Ollama 로(torch-free 코어), Windows 에서 MCP in-session hang 을 HTTP 전송으로 해결.
+자세히: `docs/release-notes/v0.6.0.md`.
+
+### Phase 9 - 임베딩을 Ollama 로 (torch-free 코어)
+- `vector.embed()` 를 sentence-transformers(torch) → Ollama `/api/embed` (L2 정규화).
+  기본 모델 `qwen3-embedding:0.6b` (1024-dim). `MemoryConfig.embedding_model` 추가.
+- `pyproject`: `sentence-transformers` 를 코어 deps → `[rerank]` optional extra.
+  기본 설치가 **torch-free** (reranker 는 `[rerank]` 설치 시만, `search.py` graceful degrade).
+- GPU 는 Ollama 가 자동 관리. 기존 memory.db 는 재임베딩 필요.
+
+### Added - Windows HTTP MCP 전송
+- `mcp_server`: `TUNA_MCP_TRANSPORT=http|sse` 전송 전환 (기본 stdio). streamable-http 데몬.
+- `plugin/bin/tunallama-httpd.cmd` (데몬 런처) + `tunallama-win-setup.ps1` (원클릭 셋업, `-Uninstall`).
+- Windows 의 Python+stdio MCP in-session hang(실측 565s) 을 HTTP 로 우회. mac/Linux 는 stdio 유지.
+
+### Fixed
+- Windows 테스트 이식성 7건(TOML 백슬래시 경로, Unix 권한/exec-bit 전제, subprocess env).
+- `test_memory_mmr` hermetic 화(키워드 fake embed) → CI 가 Ollama 없이 통과 (507 passed).
+
 ## [Unreleased] - 0.5.0 (production release 준비)
 
 ### audit + production-ready 작업
