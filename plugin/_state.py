@@ -50,9 +50,18 @@ def _ensure() -> tuple[Config, LLMClient, MemoryStore | None]:
         _config = load_config()
         _client = make_client(_config.llm)
         if _config.memory.enable_logging:
-            # device 환경변수 — config 의 embedding_device 가 "auto" 가 아니면 우선 적용.
+            import os
+
+            # Phase 9: 임베딩 모델(Ollama 태그) + host 를 vector.py 가 읽는 env 로 브리지.
+            os.environ.setdefault(
+                "TUNA_EMBEDDING_MODEL", _config.memory.embedding_model
+            )
+            if _config.llm.ollama is not None:
+                os.environ.setdefault(
+                    "TUNA_EMBEDDING_HOST", _config.llm.ollama.host
+                )
+            # device — reranker([rerank] extra) 전용. "auto" 가 아니면 우선 적용.
             if _config.memory.embedding_device != "auto":
-                import os
                 os.environ.setdefault(
                     "TUNA_EMBEDDING_DEVICE", _config.memory.embedding_device
                 )

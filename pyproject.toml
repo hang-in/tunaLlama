@@ -25,17 +25,20 @@ dependencies = [
     "mcp>=1.0.0",
     "kiwipiepy>=0.20.0",
     "python-dotenv>=1.0.0",
-    # Phase 2 — semantic recall
-    "sentence-transformers>=3.0",
+    # Phase 2/9 — semantic recall. 임베딩은 Ollama /api/embed (torch 불필요).
     "numpy>=1.26",
 ]
 
 [project.optional-dependencies]
+# Phase 9: cross-encoder reranker 는 sentence-transformers(torch) 필요 → 옵셔널.
+# 미설치 시 search.py 가 top-k 로 graceful degrade. 코어는 torch-free.
+rerank = ["sentence-transformers>=3.0"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
     "pytest-cov>=5.0",
     "ruff>=0.6.0",
+    "sentence-transformers>=3.0",  # reranker 테스트용
 ]
 
 [project.urls]

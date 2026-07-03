@@ -33,16 +33,19 @@ db_path = "~/.tunallama/memory.db"
 korean_tokenizer = "kiwi"
 enable_logging = true
 enable_recall = true
-# Phase 4: 벡터 임베딩 (BGE-M3) on/off. false 면 GPU 메모리 0, BM25 path 만 살아있음.
+# Phase 4: 벡터 임베딩 on/off. false 면 BM25 path 만 살아있음.
 enable_embeddings = true
-# auto | cpu | mps | cuda. macOS 일상 사용 시 "cpu" 권장 (다른 앱 GPU 사용 가능).
-# 환경변수 TUNA_EMBEDDING_DEVICE 가 우선.
-embedding_device = "auto"
-# 환경변수 TUNA_EMBEDDING_MODEL 로 BGE-M3 외 모델 swap 가능 (dim 1024 호환만).
+# Phase 9: 임베딩은 Ollama /api/embed 사용 (torch 불필요, GPU 는 Ollama 가 자동 관리).
+# 모델은 Ollama 태그. dim 1024 모델만 (스키마 고정). 환경변수 TUNA_EMBEDDING_MODEL 우선.
 # 후보:
-#   BAAI/bge-m3 (default)         general purpose multilingual
-#   nlpai-lab/KURE-v1             Korean finetune (BGE-M3 기반, dim 1024)
-#   Qwen/Qwen3-Embedding-0.6B     multilingual
+#   qwen3-embedding:0.6b (default)  다국어, bge-m3 의 NaN 버그 해결, 1024-dim
+#   bge-m3                          다국어, 1024-dim
+embedding_model = "qwen3-embedding:0.6b"
+# 임베딩 host 는 [llm.ollama].host 를 재사용 (환경변수 TUNA_EMBEDDING_HOST 로 override).
+#
+# auto | cpu | mps | cuda. Phase 9 이후 임베딩엔 무의미(Ollama 가 device 관리).
+# 옵셔널 reranker([rerank] extra, sentence-transformers) 전용. TUNA_EMBEDDING_DEVICE 우선.
+embedding_device = "auto"
 
 [routing]
 # always | on_request | never

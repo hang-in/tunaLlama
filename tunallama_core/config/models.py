@@ -85,12 +85,15 @@ class MemoryConfig:
     korean_tokenizer: KoreanTokenizer = "kiwi"
     enable_logging: bool = True
     enable_recall: bool = True
-    # Phase 4: 벡터 임베딩 자체를 끌 수 있게. False 면 record_call 시 BGE-M3 모델
-    # 로드/추론 X (GPU 메모리 점유 0). BM25 path 만 살아있음.
+    # Phase 4: 벡터 임베딩 자체를 끌 수 있게. False 면 record_call 시 임베딩
+    # 호출 X. BM25 path 만 살아있음.
     enable_embeddings: bool = True
-    # "auto" | "cpu" | "mps" | "cuda" - sentence-transformers 의 device 인자.
-    # 환경변수 ``TUNA_EMBEDDING_DEVICE`` 가 우선. macOS 일상 사용은 "cpu" 권장
-    # (다른 앱이 GPU 사용 가능, 추론 속도 5배 느려지나 일상 영향 미미).
+    # Phase 9: 임베딩 모델 (Ollama 태그). 1024-dim 모델만 (스키마 고정).
+    # 환경변수 ``TUNA_EMBEDDING_MODEL`` 이 우선.
+    embedding_model: str = "qwen3-embedding:0.6b"
+    # "auto" | "cpu" | "mps" | "cuda" - Phase 9 이후 임베딩은 Ollama 가 device 를
+    # 자동 관리하므로 임베딩 경로에선 무의미. 옵셔널 reranker(sentence-transformers,
+    # [rerank] extra) 전용. 환경변수 ``TUNA_EMBEDDING_DEVICE`` 가 우선.
     embedding_device: str = "auto"
 
 

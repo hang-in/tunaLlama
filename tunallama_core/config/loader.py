@@ -131,6 +131,7 @@ def _build_memory(d: dict[str, Any]) -> MemoryConfig:
         enable_logging=bool(d.get("enable_logging", True)),
         enable_recall=bool(d.get("enable_recall", True)),
         enable_embeddings=bool(d.get("enable_embeddings", True)),
+        embedding_model=str(d.get("embedding_model", "qwen3-embedding:0.6b")),
         embedding_device=device,
     )
 

@@ -76,17 +76,48 @@ def test_disabled_embeddings_skip_model_load(monkeypatch, tmp_path):
         assert s.search_vectors("x") == []
 
 
-def test_resolve_device_from_env(monkeypatch):
+def test_embed_calls_ollama_and_normalizes(monkeypatch):
+    """Phase 9: embed() 가 Ollama /api/embed 를 호출하고 L2 정규화한 1024-dim
+    float32 를 돌려준다. ollama.Client 를 mock 해 네트워크 없이 검증."""
     from tunallama_core.memory import vector as v
 
-    monkeypatch.delenv("TUNA_EMBEDDING_DEVICE", raising=False)
-    assert v._resolve_device() is None  # auto
-    monkeypatch.setenv("TUNA_EMBEDDING_DEVICE", "cpu")
-    assert v._resolve_device() == "cpu"
-    monkeypatch.setenv("TUNA_EMBEDDING_DEVICE", "MPS")
-    assert v._resolve_device() == "mps"
-    monkeypatch.setenv("TUNA_EMBEDDING_DEVICE", "weird")
-    assert v._resolve_device() is None  # 미지원 값 → fallback
+    raw = [3.0] + [0.0] * (EMBEDDING_DIM - 1)  # 비정규 벡터 → norm=3
+
+    class FakeClient:
+        def __init__(self, *a, **kw):
+            self.host = kw.get("host")
+
+        def embed(self, *, model, input):
+            assert model  # 태그 전달 확인
+            return {"embeddings": [raw]}
+
+    monkeypatch.setattr(v, "_client", None)
+    monkeypatch.setattr("ollama.Client", FakeClient)
+    monkeypatch.setenv("TUNA_EMBEDDING_MODEL", "qwen3-embedding:0.6b")
+
+    vec = v.embed("hello")
+    assert vec.shape == (EMBEDDING_DIM,)
+    assert vec.dtype == np.float32
+    assert float(np.linalg.norm(vec)) == pytest.approx(1.0, abs=1e-5)
+    assert vec[0] == pytest.approx(1.0, abs=1e-5)  # 3/‖v‖ = 1
+
+
+def test_embed_raises_on_dim_mismatch(monkeypatch):
+    """다른 차원 모델이면 LLMError (silent NaN 금지)."""
+    from tunallama_core.errors import LLMError
+    from tunallama_core.memory import vector as v
+
+    class FakeClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        def embed(self, *, model, input):
+            return {"embeddings": [[0.1] * 512]}  # 잘못된 dim
+
+    monkeypatch.setattr(v, "_client", None)
+    monkeypatch.setattr("ollama.Client", FakeClient)
+    with pytest.raises(LLMError):
+        v.embed("x")
 
 
 def test_record_call_stores_embedding(store):

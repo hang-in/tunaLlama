@@ -1,13 +1,14 @@
 """의미 기반 (벡터) recall 의 보조 모듈.
 
-- ``embed(text)`` 가 BGE-M3 로 1024-dim L2-정규화 벡터를 돌려준다.
+- ``embed(text)`` 가 Ollama ``/api/embed`` 로 1024-dim L2-정규화 벡터를 돌려준다.
 - ``VectorHit`` 가 ``MemoryStore.search_vectors`` 의 결과 단위.
 
-설계 결정:
-- ``sentence-transformers`` 의 ``normalize_embeddings=True`` 를 사용 — 수동
-  L2 정규화보다 모델 내부 처리가 정확하고 빠르다 (round 7 dogfooding 의 좋은
-  발견 차용).
-- 모델은 lazy load. ``threading.Lock`` 으로 멀티 스레드 race 방지.
+설계 결정 (Phase 9 — Ollama 전환):
+- 임베딩 백엔드를 sentence-transformers(torch) → **Ollama** 로 교체. torch 의존
+  제거(py3.13 import hang·CPU/GPU 빌드 문제 소멸), GPU 는 Ollama 가 자동 관리.
+  기본 모델 ``qwen3-embedding:0.6b`` (1024-dim, bge-m3 의 NaN 버그 해결).
+- Ollama 응답은 unit vector 를 보장하지 않으므로 여기서 L2 정규화(cosine 전제).
+- 클라이언트는 lazy. ``threading.Lock`` 으로 멀티 스레드 race 방지.
 - HNSW / 외부 인덱스는 보류 — 1만 record 까지는 brute-force cosine 으로 충분.
 """
 
@@ -19,24 +20,26 @@ from dataclasses import dataclass
 
 import numpy as np
 
-DEFAULT_EMBEDDING_MODEL = "BAAI/bge-m3"
+# 임베딩 백엔드: Ollama 태그. qwen3-embedding:0.6b 는 1024-dim (기존 스키마 호환).
+DEFAULT_EMBEDDING_MODEL = "qwen3-embedding:0.6b"
+DEFAULT_EMBEDDING_HOST = "http://localhost:11434"
 EMBEDDING_MODEL = os.environ.get("TUNA_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
-EMBEDDING_DIM = 1024  # BGE-M3 / KURE-v1 / Qwen3-Embedding-0.6B 모두 1024
+EMBEDDING_DIM = 1024  # bge-m3 / qwen3-embedding:0.6b 모두 1024
 _EMBEDDING_DTYPE = np.float32
 
-_model = None
-_model_lock = threading.Lock()
+_client = None
+_client_lock = threading.Lock()
 
 
-def _resolve_device() -> str | None:
-    """``TUNA_EMBEDDING_DEVICE`` 환경변수 → device 문자열.
+def _embedding_model() -> str:
+    """``TUNA_EMBEDDING_MODEL`` (Ollama 태그) — 호출 시점 조회. _state 가
+    config → env 브리지한 뒤에도 반영되도록 상수 대신 함수로 읽는다."""
+    return os.environ.get("TUNA_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
 
-    "" / "auto" → None (sentence-transformers 가 자동 선택). 잘못된 값은 None.
-    """
-    raw = os.environ.get("TUNA_EMBEDDING_DEVICE", "").strip().lower()
-    if raw in ("cpu", "mps", "cuda"):
-        return raw
-    return None
+
+def _embedding_host() -> str:
+    """임베딩용 Ollama host. ``TUNA_EMBEDDING_HOST`` 우선, 없으면 로컬 기본."""
+    return os.environ.get("TUNA_EMBEDDING_HOST", DEFAULT_EMBEDDING_HOST)
 
 
 @dataclass(frozen=True)
@@ -49,37 +52,58 @@ class VectorHit:
     timestamp: str
 
 
-def _get_model():
-    """lazy load - 첫 ``embed()`` 호출 때 모델 다운로드/로드 (~1-2GB).
+def _get_client():
+    """lazy Ollama 클라이언트. host 는 첫 호출 시 확정.
 
     환경변수:
-    - ``TUNA_EMBEDDING_MODEL``: HuggingFace model id. default ``BAAI/bge-m3``.
-      대안: ``nlpai-lab/KURE-v1`` (Korean finetune), ``Qwen/Qwen3-Embedding-0.6B``.
-      모델 dim 이 1024 와 다르면 측정 실패하므로 같은 dim 모델만 swap.
-    - ``TUNA_EMBEDDING_DEVICE``: cpu / mps / cuda. macOS 일상 사용엔 cpu 권장.
+    - ``TUNA_EMBEDDING_MODEL``: Ollama 태그. default ``qwen3-embedding:0.6b``.
+      1024-dim 모델만 swap 가능(스키마 고정). 예: ``bge-m3``.
+    - ``TUNA_EMBEDDING_HOST``: 임베딩용 Ollama host. default ``http://localhost:11434``.
     """
-    global _model
-    with _model_lock:
-        if _model is None:
-            from sentence_transformers import SentenceTransformer
+    global _client
+    with _client_lock:
+        if _client is None:
+            from ollama import Client
 
-            kwargs: dict = {}
-            device = _resolve_device()
-            if device is not None:
-                kwargs["device"] = device
-            _model = SentenceTransformer(EMBEDDING_MODEL, **kwargs)
-    return _model
+            _client = Client(host=_embedding_host())
+    return _client
+
+
+def _normalize(v: np.ndarray) -> np.ndarray:
+    n = float(np.linalg.norm(v))
+    if n < 1e-12:
+        return v
+    return v / n
 
 
 def embed(text: str) -> np.ndarray:
-    """텍스트를 ``(1024,)`` float32 L2-정규화 벡터로 변환.
+    """텍스트를 ``(1024,)`` float32 L2-정규화 벡터로 변환 (Ollama /api/embed).
 
-    빈 문자열도 받아 1024-dim 0-벡터를 반환하지 않고 모델이 학습한 placeholder
-    임베딩을 그대로 돌려준다 (의도적 — 호출자가 빈 입력을 사전에 거른다).
+    Ollama 응답은 unit vector 를 보장하지 않으므로 여기서 L2 정규화한다
+    (cosine 검색 전제). 모델/호스트 미가용·dim 불일치는 ``LLMError``.
     """
-    model = _get_model()
-    vec = model.encode(text, convert_to_numpy=True, normalize_embeddings=True)
-    return vec.astype(_EMBEDDING_DTYPE)
+    from ..errors import LLMError
+
+    client = _get_client()
+    model = _embedding_model()
+    try:
+        resp = client.embed(model=model, input=text)
+    except Exception as e:  # noqa: BLE001 - provider/네트워크 오류 일괄 래핑
+        raise LLMError(
+            f"Ollama 임베딩 호출 실패 (model={model}, host={_embedding_host()}): {e}"
+        ) from e
+    embeddings = getattr(resp, "embeddings", None)
+    if embeddings is None and isinstance(resp, dict):
+        embeddings = resp.get("embeddings")
+    if not embeddings:
+        raise LLMError(f"Ollama 임베딩 응답에 embeddings 없음 (model={model})")
+    v = np.asarray(embeddings[0], dtype=_EMBEDDING_DTYPE)
+    if v.shape[0] != EMBEDDING_DIM:
+        raise LLMError(
+            f"임베딩 dim {v.shape[0]} != 기대값 {EMBEDDING_DIM} (model={model}). "
+            "다른 차원 모델은 스키마 비호환."
+        )
+    return _normalize(v).astype(_EMBEDDING_DTYPE)
 
 
 def encode_blob(vec: np.ndarray) -> bytes:
