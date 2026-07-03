@@ -14,6 +14,9 @@ cd "$REPO_DIR"
 
 if [ -x ".venv/bin/python" ]; then
   exec ".venv/bin/python" -m plugin.mcp_server "$@"
+elif [ -x ".venv/Scripts/python.exe" ]; then
+  # Windows venv 레이아웃 (uv venv / python -m venv). Git Bash 경유 spawn 대응.
+  exec ".venv/Scripts/python.exe" -m plugin.mcp_server "$@"
 elif command -v python >/dev/null 2>&1; then
   exec python -m plugin.mcp_server "$@"
 elif command -v python3 >/dev/null 2>&1; then
