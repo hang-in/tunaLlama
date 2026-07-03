@@ -50,10 +50,10 @@ def test_hook_outputs_json_with_state(tmp_path, monkeypatch):
     ))
     save_state(state)
 
-    env = {
-        "TUNA_STATE_BASE": str(state_base),
-        "PATH": os.environ.get("PATH", ""),
-    }
+    # 부모 환경 전체를 물려주고 TUNA_STATE_BASE 만 덮어쓴다. Windows 에서는
+    # PATH 만 넘기면 PATHEXT / SystemRoot 등 부재로 git 조회(project hash)가
+    # 달라져 hook 이 state.md 를 못 찾고 빈 출력이 된다.
+    env = {**os.environ, "TUNA_STATE_BASE": str(state_base)}
     # subprocess 가 module 새로 로드 시 _default_state_base() 가 env 읽음.
     result = subprocess.run(
         [sys.executable, str(HOOK_PATH)],

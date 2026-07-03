@@ -34,7 +34,10 @@ def isolated_state(monkeypatch, tmp_path):
     cdir = tmp_path / ".tunallama"
     cdir.mkdir()
     db = tmp_path / "mem.db"
-    (cdir / "config.toml").write_text(_CONFIG.format(db=db))
+    # TOML basic string 에 Windows 경로(C:\Users\...)를 그대로 넣으면 \U 등이
+    # 불법 이스케이프로 파싱 실패 → forward-slash(as_posix) 로 통일. Path 는
+    # Windows 에서도 forward slash 를 문제없이 처리.
+    (cdir / "config.toml").write_text(_CONFIG.format(db=db.as_posix()))
     monkeypatch.chdir(tmp_path)
 
     from plugin import _state

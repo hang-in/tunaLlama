@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import sys
 import textwrap
 from pathlib import Path
+
+import pytest
 
 
 from tunallama_core.cli.doctor_cmd import (
@@ -85,6 +88,11 @@ def test_check_memory_db_writable(tmp_path):
     assert (tmp_path / "m.db").exists()
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="'/no_perm_dir_xyz' 는 Windows 에선 C:\\no_perm_dir_xyz 로 해석돼 실제 생성 가능 "
+    "(Unix 루트 권한 전제). 쓰기 불가 경로를 이식성 있게 만들 방법이 없어 skip.",
+)
 def test_check_memory_db_unwritable(tmp_path):
     """sqlite3 connect 가 디렉토리 생성에 실패하는 경로."""
     cfg = _config_for_memory(Path("/no_perm_dir_xyz/m.db"))
@@ -179,7 +187,7 @@ def test_run_doctor_returns_zero_when_config_and_provider_ok(
             host = "http://localhost:1234/v1"
             model = "m"
             [memory]
-            db_path = "{tmp_path / "doctor.db"}"
+            db_path = "{(tmp_path / "doctor.db").as_posix()}"
         """)
     )
     rc = run_doctor()

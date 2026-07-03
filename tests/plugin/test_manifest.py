@@ -1,6 +1,7 @@
 """Plugin manifest / 설정 / 스킬·서브에이전트 정의 파일이 정합한지 확인."""
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -60,15 +61,29 @@ def test_mcp_json_registers_server():
     assert "${CLAUDE_PLUGIN_ROOT}" in server.get("cwd", "")
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX exec bit 검사 - Windows 는 git 이 exec bit 미보존. "
+    "Windows 런처는 test_mcp_wrapper_cmd_exists_on_windows 가 검증.",
+)
 def test_mcp_wrapper_script_exists_and_executable():
     """wrapper script 가 존재 + 실행권한이어야 .mcp.json spawn 이 작동."""
     wrapper = PLUGIN_ROOT / "bin" / "tunallama-mcp"
     assert wrapper.exists(), f"missing: {wrapper}"
-    # POSIX 실행권한 - macOS/Linux. Windows 는 별도 .bat (현재 미지원).
+    # POSIX 실행권한 - macOS/Linux.
     assert wrapper.stat().st_mode & 0o111, f"not executable: {wrapper}"
     body = wrapper.read_text(encoding="utf-8")
     assert body.startswith("#!"), "shebang missing"
     assert "plugin.mcp_server" in body
+
+
+def test_mcp_wrapper_cmd_exists_on_windows():
+    """Windows 용 .cmd 런처가 존재하고 venv python + mcp_server 를 실행해야 한다."""
+    cmd = PLUGIN_ROOT / "bin" / "tunallama-mcp.cmd"
+    assert cmd.exists(), f"missing Windows launcher: {cmd}"
+    body = cmd.read_text(encoding="utf-8")
+    assert "plugin.mcp_server" in body
+    assert "python" in body.lower()
 
 
 def test_skill_file_exists_with_frontmatter():
