@@ -112,10 +112,13 @@ HTTP(streamable-http) 전송**으로 우회한다. mac/Linux 는 stdio 그대로
 REM 1) HTTP 데몬 실행 (레포 root). 포트 기본 8766. 런처가 venv python + HTTP 모드 설정.
 plugin\bin\tunallama-httpd.cmd
 
-REM 2) Claude Code 에 HTTP MCP 로 등록 (플러그인의 stdio MCP 대신)
-claude mcp add --transport http tunallama-http http://127.0.0.1:8766/mcp
+REM 2) Claude Code 에 HTTP MCP 로 등록. 이름은 'tunallama' 로 (툴 = mcp__tunallama__tuna_*)
+claude mcp add --transport http tunallama http://127.0.0.1:8766/mcp
 
-REM 3) Claude Code 재시작 → mcp__tunallama-http__* 툴 활성 (in-session 정상)
+REM 3) 플러그인의 stdio MCP 는 Windows 에서 hang 하므로 비활성화 (중복/wedge 제거).
+REM    설치된 플러그인의 plugin/.mcp.json 을 {"mcpServers": {}} 로. skill/subagent/hook 은 유지됨.
+
+REM 4) Claude Code 재시작 → mcp__tunallama__* 툴 활성 (in-session 정상)
 ```
 
 **로그온 자동시작** (데몬 상주):
