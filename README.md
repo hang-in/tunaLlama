@@ -22,8 +22,8 @@ tunaLlama는 프롬프트 시드나 AGENTS.md 템플릿이 **아닙니다**. **M
 
 | 항목 | 내용 |
 | --- | --- |
-| 상태 | **v0.5.x usable dogfooding release** (2026-05-11) |
-| 검증됨 | Claude Code + Codex CLI 양쪽에서 MCP tool 호출 |
+| 상태 | **v0.6.0 usable dogfooding release** (2026-07-03) |
+| 검증됨 | Claude Code + Codex CLI 양쪽에서 MCP tool 호출 (macOS / Linux / Windows) |
 | 수집 중 | organic dogfooding 측정, 외부 사용자 재현성 |
 | 라이선스 | [MIT](LICENSE) |
 | 영문 문서 | [README.en.md](README.en.md) |
@@ -203,7 +203,7 @@ docs/specs/foo.md 에 작업 spec 을 먼저 작성한 뒤:
 
 ## 한계
 
-**v0.5.x usable dogfooding release입니다.** Claude Code + Codex CLI 양쪽에서 MCP tool 호출은 검증했지만, organic dogfooding(실제 일상 사용) 측정 자산은 아직 수집 중입니다. 아래는 카테고리별 정리입니다.
+**v0.6.0 usable dogfooding release입니다.** Claude Code + Codex CLI 양쪽에서 MCP tool 호출은 검증했지만(macOS / Linux / Windows), organic dogfooding(실제 일상 사용) 측정 자산은 아직 수집 중입니다. 아래는 카테고리별 정리입니다.
 
 ### 1. 사용 한도 / 비용
 
@@ -312,7 +312,15 @@ curl http://localhost:1234/v1/models  # LM Studio
 
 ### MCP 도구가 안 보이거나 새 세션에서 server fail
 
-**증상:** `/plugin` 화면에서 `tunaLlama MCP Server  Status: ✘ failed`. 또는 도구 목록에 `tuna_*`가 안 보임.
+**증상:** `/plugin` 화면에서 `tunaLlama MCP Server  Status: ✘ failed`. 또는 도구 목록에 `tuna_*`가 안 보임. **Windows 는 tool 호출이 무한 hang** 으로 나타남.
+
+**원인 0 - Windows (Python+stdio hang):** Windows 에서는 Python + stdio MCP 가 Claude Code 와의 조합에서 in-session tool 호출이 무한 hang 한다(서버는 정상 — Claude Code 의 Windows stdio MCP 클라이언트 이슈). **HTTP 데몬으로 전환**한다:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File plugin\bin\tunallama-win-setup.ps1
+```
+
+이후 Claude Code 재시작 → `mcp__tunallama__*` 정상. 자세히: [INSTALL.md](INSTALL.md) Windows 섹션. (아래 원인 1~3 은 macOS / Linux.)
 
 **원인 1 - venv 의존성 미해결** (v0.5.8 이하): plugin의 `.mcp.json`이 `command: "python"`으로 system python을 spawn합니다. mise / pyenv / direnv 같은 shell hook은 Claude Code의 child process에서 활성화되지 않아, venv의 fastmcp / anthropic SDK 등 deps를 못 잡고 ImportError가 납니다. **v0.5.9+부터 wrapper script(`plugin/bin/tunallama-mcp`)가 `.venv/bin/python`으로 자동 fallback**하므로 업데이트를 권장합니다.
 
@@ -380,7 +388,7 @@ mise run test                   # pytest (unit + plugin only)
 - [docs/specs/](docs/specs/) - Phase별 spec 문서
 - [docs/dogfooding-log.md](docs/dogfooding-log.md) - 라운드별 dogfooding 결과
 - [docs/release-notes/](docs/release-notes/) - 릴리즈 노트
-  ([v0.5.9](docs/release-notes/v0.5.9.md) · [v0.5.8](docs/release-notes/v0.5.8.md) ·
+  ([v0.6.0](docs/release-notes/v0.6.0.md) · [v0.5.9](docs/release-notes/v0.5.9.md) · [v0.5.8](docs/release-notes/v0.5.8.md) ·
   [v0.5.7](docs/release-notes/v0.5.7.md) · [v0.5.6](docs/release-notes/v0.5.6.md) ·
   [v0.5.5](docs/release-notes/v0.5.5.md) · [v0.5.4](docs/release-notes/v0.5.4.md) ·
   [v0.5.3](docs/release-notes/v0.5.3.md) · [v0.5.2](docs/release-notes/v0.5.2.md) ·
