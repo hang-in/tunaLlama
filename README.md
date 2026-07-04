@@ -22,7 +22,7 @@ tunaLlama는 프롬프트 시드나 AGENTS.md 템플릿이 **아닙니다**. **M
 
 | 항목 | 내용 |
 | --- | --- |
-| 상태 | **v0.6.0 usable dogfooding release** (2026-07-03) |
+| 상태 | **v0.6.1 usable dogfooding release** (2026-07-04) |
 | 검증됨 | Claude Code + Codex CLI 양쪽에서 MCP tool 호출 (macOS / Linux / Windows) |
 | 수집 중 | organic dogfooding 측정, 외부 사용자 재현성 |
 | 라이선스 | [MIT](LICENSE) |
@@ -203,7 +203,7 @@ docs/specs/foo.md 에 작업 spec 을 먼저 작성한 뒤:
 
 ## 한계
 
-**v0.6.0 usable dogfooding release입니다.** Claude Code + Codex CLI 양쪽에서 MCP tool 호출은 검증했지만(macOS / Linux / Windows), organic dogfooding(실제 일상 사용) 측정 자산은 아직 수집 중입니다. 아래는 카테고리별 정리입니다.
+**v0.6.1 usable dogfooding release입니다.** Claude Code + Codex CLI 양쪽에서 MCP tool 호출은 검증했지만(macOS / Linux / Windows), organic dogfooding(실제 일상 사용) 측정 자산은 아직 수집 중입니다. 아래는 카테고리별 정리입니다.
 
 ### 1. 사용 한도 / 비용
 
@@ -388,7 +388,7 @@ mise run test                   # pytest (unit + plugin only)
 - [docs/specs/](docs/specs/) - Phase별 spec 문서
 - [docs/dogfooding-log.md](docs/dogfooding-log.md) - 라운드별 dogfooding 결과
 - [docs/release-notes/](docs/release-notes/) - 릴리즈 노트
-  ([v0.6.0](docs/release-notes/v0.6.0.md) · [v0.5.9](docs/release-notes/v0.5.9.md) · [v0.5.8](docs/release-notes/v0.5.8.md) ·
+  ([v0.6.1](docs/release-notes/v0.6.1.md) · [v0.6.0](docs/release-notes/v0.6.0.md) · [v0.5.9](docs/release-notes/v0.5.9.md) · [v0.5.8](docs/release-notes/v0.5.8.md) ·
   [v0.5.7](docs/release-notes/v0.5.7.md) · [v0.5.6](docs/release-notes/v0.5.6.md) ·
   [v0.5.5](docs/release-notes/v0.5.5.md) · [v0.5.4](docs/release-notes/v0.5.4.md) ·
   [v0.5.3](docs/release-notes/v0.5.3.md) · [v0.5.2](docs/release-notes/v0.5.2.md) ·

@@ -3,6 +3,19 @@
 본 문서는 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/) 형식을 따른다.
 버전 번호는 [Semantic Versioning](https://semver.org/lang/ko/)을 따른다.
 
+## [0.6.1] - 2026-07-04
+
+Windows HTTP 데몬 경로 안정화 패치. 자세히: `docs/release-notes/v0.6.1.md`.
+
+### Fixed
+- **배치 CRLF 버그**: Windows 스크립트가 LF-only 면 cmd.exe 가 `if/else` 블록을
+  오파싱 → venv python 탐지 실패 → system python 폴백 크래시. `.gitattributes`
+  로 `*.cmd/*.bat/*.vbs/*.ps1` eol=crlf 강제 + 기존 파일 변환.
+- **데몬 창 없이 실행**: 스케줄 작업 → wscript → hidden VBS → 숨김 cmd → python.
+  로그온 시 콘솔 창 안 뜸. 로그는 `~/.tunallama/httpd.log`.
+- **launcher Windows venv 분기** (이슈 #1): `plugin/bin/tunallama-mcp` 에
+  `.venv/Scripts/python.exe` 분기 추가 (Git Bash stdio spawn 대응).
+
 ## [0.6.0] - 2026-07-03
 
 임베딩을 Ollama 로(torch-free 코어), Windows 에서 MCP in-session hang 을 HTTP 전송으로 해결.
